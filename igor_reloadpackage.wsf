@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <!-- igor_reloadpackage.wsf -- Connects to the currently running
+       Igor Pro instance and reloads a package, if such package is
+       already loaded. The package name is given as the single
+       argument on the command line.
+       -->
+<job id="unload">
+  <script language="VBScript" src="igor_utils.vbs"/>
+  <script language="VBScript" src="igor_reloadpackage.vbs"/>
+  <script language="VBScript">
+    Dim IgorApp
+    Set IgorApp = ConnectToIgorProServer()
+    If Not IgorApp Is Nothing Then
+        Set objArgs = WScript.Arguments
+        ReloadPackage_unload IgorApp, objArgs(0)
+    End If
+  </script>
+</job>
+<job id="load">
+  <script language="VBScript" src="igor_utils.vbs"/>
+  <script language="VBScript" src="igor_reloadpackage.vbs"/>
+  <script language="VBScript">
+    Dim IgorApp
+    Set IgorApp = ConnectToIgorProServer()
+    If Not IgorApp Is Nothing Then
+        Set objArgs = WScript.Arguments
+        ReloadPackage_load IgorApp, objArgs(0)
+    End If
+  </script>
+</job>
+</package>
