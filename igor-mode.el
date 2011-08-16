@@ -260,18 +260,49 @@
 (defconst igor-builtin-operations-re
   (regexp-opt igor-builtin-operations 'words))
 
-(defconst igor-number-re "-?\\(?:[0-9]*\\.\\)?[0-9]+\\(?:e\\(?:\\+\\|-\\)?[0-9]+\\)?"
+(defconst igor-defun-start-words
+  '("Function" "Macro" "Picture" "Proc"
+    "Static" "Structure" "Window")
+  "Words that define the beginning of a definition block")
+
+(defconst igor-defun-end-words
+  '("End" "EndMacro" "EndStructure")
+  "Words that define the end of a definition block")
+
+(defconst igor-blank-re "^[ \t]*$")
+(defconst igor-comment-re "^[ \t]*\/\/.*$")
+
+(defconst igor-number-re
+  "-?\\(?:[0-9]*\\.\\)?[0-9]+\\(?:e\\(?:\\+\\|-\\)?[0-9]+\\)?"
   "Number syntax in Igor")
 (defconst igor-name-re "[a-zA-Z0-9_]+"
   "Legal object names in Igor")
 
+(defconst igor-defun-start-function
+  (concat
+   "\\(?:Static[ \t]+\\)?"
+   "\\(?:Function"
+   "\\(\\/\\(?:C\\|D\\|S\\|DF\\|WAVE\\)\\)?\\)"))
+
+(defconst igor-defun-start-re
+  (concat
+   "\\(Macro\\|Proc\\|Structure\\|Window" ; non-static start keywords
+   "\\|\\(?:\\(?:Static[ \t]+\\)?"
+   "\\(?:Function"                              ; Static? Function
+   "\\(\\/\\(?:C\\|D\\|S\\|DF\\|WAVE\\)\\)?\\)" ; ... return type
+   "\\|Picture\\)\\)")                          ; Static? Picture
+  "Regexp for procedure start. Must define manually to handle
+   'Static' prefix cleanly. Function and Picture can have Static
+   prefix, but other keywords cannot.")
+
+(defconst igor-defun-end-re
+  (concat "^[ \t]*" (regexp-opt igor-defun-end-words 'words)))
+
 (defvar igor-defun-re
   (concat
-   "^[ \t]*\\(\\(?:Static[ \t]+\\)?"    ; modifier prefix
-   igor-procdec-keywords-re "\\)"       ; procedure type
-   "\\(?:\\/\\(?:S\\|WAVE\\)\\)?[ \t]+" ; procedure modifier
-   "\\(" igor-name-re "\\)[ \t]*"       ; procedure name
-   "\\((" "\\(?:[ \t]*" "\\(" igor-name-re "\\)*" "[ \t]*,?[ \t]*\\)*" ")\\)" ; parameter list
+   "^[ \t]*" igor-defun-start-re "[ \t]+" ; procedure type
+   "\\(" igor-name-re "\\)[ \t]*"         ; procedure name
+   "\\((" "\\(?:[ \t]*" "\\(" igor-name-re "\\)" "[ \t]*,?[ \t]*\\)*" ")\\)" ; parameter list
    "\\([ \t]*:[ \t]*" igor-procsub-keywords-re "[ \t]*\\)?" ; procedure subtype
    )
   "Regexp for definition line of Igor functions/macros/etc.")
@@ -320,9 +351,11 @@
     (list
      ;; Function names
      (list igor-defun-re
+           '(1 font-lock-keyword-face)        ; procedure type
+           '(2 font-lock-type-face t t)       ; return type
+           '(3 font-lock-function-name-face)  ; procedure name
            '(7 font-lock-keyword-face nil t)  ; procedure subtype
-           '(1 font-lock-keyword-face)        ; modifier and procedure type
-           '(3 font-lock-function-name-face)) ; procedure name
+           )
      (cons igor-procdec-keywords-re 'font-lock-keyword-face)
      (cons igor-procsub-keywords-re 'font-lock-keyword-face)
      (cons igor-objrefs-keywords-re 'font-lock-type-face)
@@ -358,14 +391,6 @@
       `(("Procedures" ,igor-defun-re 3)))
 
 ;; Indentation
-(defconst igor-defun-start-words
-  '("Function" "Macro" "Picture" "Proc" "Structure" "Window")
-  "Words that define the beginning of a definition block")
-
-(defconst igor-defun-end-words
-  '("End" "EndMacro" "EndStructure")
-  "Words that define the end of a definition block")
-
 (defvar igor-closeblock-words
   '("End" "EndMacro" "EndStructure"
    "while" "endtry" "endfor" "elseif"
@@ -373,7 +398,7 @@
   "Words that decrease indentation level")
 
 (defvar igor-openblock-words
-  '("Function" "Macro" "Picture" "Proc" "Structure" "Window"
+  '("Function" "Macro" "Picture" "Proc" "Static" "Structure" "Window"
     "default" "do" "for" "if" "else" "elseif" "case" "switch"
     "try" "catch" "#if" "#elif" "#ifdef" "#ifndef")
   "Words that increase indentation level")
@@ -383,15 +408,6 @@
 
 (defvar igor-openblock-re
   (concat "^[ \t]*" (regexp-opt igor-openblock-words 'words)))
-
-(defconst igor-blank-re "^[ \t]*$")
-(defconst igor-comment-re "^[ \t]*\/\/.*$")
-
-(defconst igor-defun-start-re
-  (concat "^[ \t]*" (regexp-opt igor-defun-start-words 'words)))
-(defconst igor-defun-end-re
-  (concat "^[ \t]*" (regexp-opt igor-defun-end-words 'words)))
-
 
 ;; Movement related commands
 ;; ==================================================
@@ -520,8 +536,10 @@
 ;;  * no keyword is found (indent as previous line)
 (defconst igor-start-end-pairs
   '(("Function" "End")
+    ("Static Function" "End")
     ("Macro" "End" "EndMacro")
     ("Picture" "End" "EndMacro")
+    ("Static Picture" "End" "EndMacro")
     ("Proc" "End" "EndMacro")
     ("Structure" "End" "EndStructure")
     ("Window" "End" "EndMacro")
