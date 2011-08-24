@@ -1,7 +1,7 @@
 Sub ReloadPackage_unload(ByRef IgorApp, packageName)
         quoted_packageName = """" & packageName & """"
         If IsPackageLoaded(IgorApp, packageName) Then
-                addReloadMark IgorApp, packageName
+                addReloadPackageMark IgorApp, packageName
                 IgorApp.Execute("Unload" + packageName + "Package()")
                 WScript.Sleep 500
         End If
@@ -9,31 +9,31 @@ End Sub
 
 Sub ReloadPackage_load(ByRef IgorApp, packageName)
         quoted_packageName = """" & packageName & """"
-        If IsReloadMarkExists(IgorApp, packageName) Then
-                deleteReloadMark IgorApp, packageName
+        If IsReloadPackageMarkExists(IgorApp, packageName) Then
+                deleteReloadPackageMark IgorApp, packageName
                 IgorApp.Execute("Load" + packageName + "Package()")
         End If
 End Sub
 
 mark_path = "root:"
-mark_suffix = "_RELOAD"
-Sub addReloadMark(ByRef IgorApp, packageName)
+mark_suffix = "_RELOAD_PACKAGE"
+Sub addReloadPackageMark(ByRef IgorApp, packageName)
         mark_varname = packageName & mark_suffix
         addVariable IgorApp, mark_path, mark_varname, 1
 End Sub
 
-Sub deleteReloadMark(ByRef IgorApp, packageName)
+Sub deleteReloadPackageMark(ByRef IgorApp, packageName)
         mark_varname = packageName & mark_suffix
         deleteVariable IgorApp, mark_path, mark_varname
 End Sub
 
-Function IsReloadMarkExists(IgorApp, packageName)
+Function IsReloadPackageMarkExists(IgorApp, packageName)
         mark_varname = packageName & mark_suffix
         Set df = IgorApp.DataFolder(mark_path)
         Set vars = df.Variables
         If vars.VariableExists(mark_varname) Then
-                IsReloadMarkExists = True
+                IsReloadPackageMarkExists = True
         Else
-                IsReloadMarkExists = False
+                IsReloadPackageMarkExists = False
         End If
 End Function

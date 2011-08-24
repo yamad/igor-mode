@@ -36,3 +36,13 @@ Sub deleteVariable(ByRef IgorApp, path, varName)
                 End If
         Next
 End Sub
+
+Function IsVariableExists(path, varname)
+        Set df = IgorApp.DataFolder(path)
+        Set vars = df.Variables
+        If vars.VariableExists(varname) Then
+                IsVariableExists = True
+        Else
+                IsVariableExists = False
+        End If
+End Function
