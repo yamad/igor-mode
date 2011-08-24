@@ -12,6 +12,48 @@
 ;;
 ;; Code was initially based heavily on Fred White's visual-basic-mode
 ;; <http://www.emacswiki.org/cgi-bin/wiki/visual-basic-mode.el>
+;;
+;; Procedure files are set to read-only while they are loaded in Igor
+;; (at least in Windows). To work around this, this mode integrates
+;; with VBScript scripts that automate the unloading and reloading of
+;; included procedure files and packages before saving. In order for
+;; this functionality to work, follow the following rules:
+;;
+;; For stand-alone procedure files, the file must:
+;;
+;;  1) be opened with an `#include` statement (and not opened directly
+;;  by using the "Open File" dialog)
+;;  
+;;  2) define a global variable called `<filename>_INCLUDE`
+;;  (i.e. ramp.ipf defines the `ramp_INCLUDE` variable) in the root
+;;  data folder. The easiest way to do this is to use a trick using
+;;  menu macros, by adding the following code to the procedure file
+;;  (make sure to replace <filename> with the name of your file:
+;;
+;; // -- Automatically run an init function when compiled --
+;; Menu "Macros", dynamic
+;;     Init<filename>()
+;; End
+;;
+;; Function/S Init<filename>()
+;;     Variable/G root:<filename>_INCLUDE = 1
+;;     return ""
+;; End
+;; // ------------------------------------------------------
+;;
+;; 
+;; For packages, the package must:
+;;
+;;  1) define a function called "Load<packageName>Package" in the
+;;  package loader file
+;;  
+;;  2) define a function called "Unload<packageName>Package" in the
+;;  main package file
+;;
+;;  3) these functions should setup and teardown, respectively, a
+;;  package data folder under `root:Packages` named for the package
+;;  (i.e. jSwp package defines the data folder `root:Packages:jSwp`)
+;;
 
 ;;; Code:
 (defvar igor-tab-width 4)
@@ -398,7 +440,7 @@
   "Words that decrease indentation level")
 
 (defvar igor-openblock-words
-  '("Function" "Macro" "Picture" "Proc" "Static" "Structure" "Window"
+  '("Function" "Macro" "Menu" "Picture" "Proc" "Static" "Structure" "Window"
     "default" "do" "for" "if" "else" "elseif" "case" "switch"
     "try" "catch" "#if" "#elif" "#ifdef" "#ifndef")
   "Words that increase indentation level")
@@ -538,6 +580,7 @@
   '(("Function" "End")
     ("Static Function" "End")
     ("Macro" "End" "EndMacro")
+    ("Menu" "End")
     ("Picture" "End" "EndMacro")
     ("Static Picture" "End" "EndMacro")
     ("Proc" "End" "EndMacro")
