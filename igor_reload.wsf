@@ -13,10 +13,15 @@
     Set IgorApp = ConnectToIgorProServer()
     If Not IgorApp Is Nothing Then
         Set objArgs = WScript.Arguments
-        If IsPackageLoaded(IgorApp, objArgs(0)) Then
-            ReloadPackage_unload IgorApp, objArgs(0)
-        ElseIf IsIncludeDefined(IgorApp, objArgs(0)) Then
-            ReloadInclude_unload IgorApp, objArgs(0)
+        filename = objArgs(0)
+        If IsPackageLoaded(IgorApp, filename) Then
+            ReloadPackage_unload IgorApp, filename
+        ElseIf IsIncludeDefined(IgorApp, filename) Then
+            ReloadInclude_unload IgorApp, filename
+        Else
+            quoted_filename = """" + filename + """"
+            IgorApp.DeleteInclude 0, quote_filename
+            IgorApp.CompileProcedures(0)
         End If
     End If
   </script>
@@ -30,8 +35,9 @@
     Set IgorApp = ConnectToIgorProServer()
     If Not IgorApp Is Nothing Then
         Set objArgs = WScript.Arguments
-        ReloadPackage_load IgorApp, objArgs(0)
-        ReloadInclude_load IgorApp, objArgs(0)
+        filename = objArgs(0)
+        ReloadPackage_load IgorApp, filename
+        ReloadInclude_load IgorApp, filename
     End If
   </script>
 </job>

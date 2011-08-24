@@ -5,7 +5,6 @@ Sub ReloadInclude_unload(ByRef IgorApp, includeName)
                 deleteIncludeVariable IgorApp, includeName
                 IgorApp.DeleteInclude 0, quoted_includeName
                 IgorApp.CompileProcedures(0)
-'                WScript.Sleep 500
         End If
 End Sub
 
