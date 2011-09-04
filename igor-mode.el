@@ -317,22 +317,44 @@
 (defconst igor-number-re
   "-?\\(?:[0-9]*\\.\\)?[0-9]+\\(?:e\\(?:\\+\\|-\\)?[0-9]+\\)?"
   "Number syntax in Igor")
-(defconst igor-name-re "[a-zA-Z0-9_]+"
+(defconst igor-name-start-re "[a-zA-Z]"
+  "Match first character of an identifier name")
+(defconst igor-name-re
+  (concat
+   igor-name-start-re
+   "[a-zA-Z0-9_]*")
   "Legal object names in Igor")
+
+(defconst igor-parameter-re
+  (concat
+   "\\[?[ \t]*" igor-name-re "[ \t]*\\]?")
+  "Parameter name with optional brackets")
+
+(defconst igor-parameter-list-re
+  (concat
+   igor-parameter-re
+   "\\(?:[ \t]*\\,[ \t]*" igor-parameter-re "\\)*")
+  "Procedure parameter list")
+
+(defconst igor-defun-static-re
+  "\\(?:Static[ \t]+\\)")
 
 (defconst igor-defun-start-function
   (concat
-   "\\(?:Static[ \t]+\\)?"
+   igor-defun-static-re "?"
    "\\(?:Function"
    "\\(\\/\\(?:C\\|D\\|S\\|DF\\|WAVE\\)\\)?\\)"))
 
+(defconst igor-defun-start-picture
+  (concat
+   igor-defun-static-re "?"
+   "\\(?:Picture\\)"))
+
 (defconst igor-defun-start-re
   (concat
-   "\\(Macro\\|Proc\\|Structure\\|Window" ; non-static start keywords
-   "\\|\\(?:\\(?:Static[ \t]+\\)?"
-   "\\(?:Function"                              ; Static? Function
-   "\\(\\/\\(?:C\\|D\\|S\\|DF\\|WAVE\\)\\)?\\)" ; ... return type
-   "\\|Picture\\)\\)")                          ; Static? Picture
+   "\\(?:Macro\\|Proc\\|Structure\\|Window" ; non-static start keywords
+   "\\|\\(?:" igor-defun-start-function "\\)"
+   "\\|\\(?:" igor-defun-start-picture "\\)\\)")
   "Regexp for procedure start. Must define manually to handle
    'Static' prefix cleanly. Function and Picture can have Static
    prefix, but other keywords cannot.")
@@ -342,9 +364,11 @@
 
 (defvar igor-defun-re
   (concat
-   "^[ \t]*" igor-defun-start-re "[ \t]+" ; procedure type
+   "^[ \t]*\\(" igor-defun-start-re "\\)[ \t]+" ; procedure type
    "\\(" igor-name-re "\\)[ \t]*"         ; procedure name
-   "\\((" "\\(?:[ \t]*" "\\(" igor-name-re "\\)" "[ \t]*,?[ \t]*\\)*" ")\\)" ; parameter list
+   "\\(([ \t]*"
+   "\\(?:" igor-parameter-list-re "\\)?" ; parameter list
+   "[ \t]*)\\)"
    "\\([ \t]*:[ \t]*" igor-procsub-keywords-re "[ \t]*\\)?" ; procedure subtype
    )
   "Regexp for definition line of Igor functions/macros/etc.")
