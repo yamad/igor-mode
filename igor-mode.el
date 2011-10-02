@@ -12,6 +12,15 @@
 ;;
 ;; Code was initially based heavily on Fred White's visual-basic-mode
 ;; <http://www.emacswiki.org/cgi-bin/wiki/visual-basic-mode.el>
+
+;; Install:
+;;
+;; Add the following lines to your .emacs (or initialization file):
+;;
+;; (add-to-list 'load-path "<path/to/igor-mode>")
+;; (require 'igor-mode)
+
+;; Autoload/unload:
 ;;
 ;; Procedure files are set to read-only while they are loaded in Igor
 ;; (at least in Windows). To work around this, this mode integrates
@@ -23,7 +32,7 @@
 ;;
 ;;  1) be opened with an `#include` statement (and not opened directly
 ;;  by using the "Open File" dialog)
-;;  
+;;
 ;;  2) define a global variable called `<filename>_INCLUDE`
 ;;  (i.e. ramp.ipf defines the `ramp_INCLUDE` variable) in the root
 ;;  data folder. The easiest way to do this is to use a trick using
@@ -41,12 +50,12 @@
 ;; End
 ;; // ------------------------------------------------------
 ;;
-;; 
+;;
 ;; For packages, the package must:
 ;;
 ;;  1) define a function called "Load<packageName>Package" in the
 ;;  package loader file
-;;  
+;;
 ;;  2) define a function called "Unload<packageName>Package" in the
 ;;  main package file
 ;;
@@ -793,6 +802,7 @@
   (interactive)
   (igor-indent-to-column (igor-calculate-indent)))
 
+;; Auto loading and unloading of procedure files before saving
 (defvar igor-mode-windows-procedure-reloader
   "~/.emacs.d/site-lisp/igor-mode/igor_reload.wsf")
 
