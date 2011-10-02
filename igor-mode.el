@@ -323,9 +323,15 @@
 (defconst igor-blank-re "^[ \t]*$")
 (defconst igor-comment-re "^[ \t]*\/\/.*$")
 
+(defconst igor-integer-re
+  "\\(?:\\+\\|-\\)?[0-9]+"
+  "Integer syntax in Igor")
 (defconst igor-number-re
-  "-?\\(?:[0-9]*\\.\\)?[0-9]+\\(?:e\\(?:\\+\\|-\\)?[0-9]+\\)?"
-  "Number syntax in Igor")
+  (concat
+   igor-integer-re
+   "\\(?:\\.[0-9]+\\)?"                 ; decimal part
+   "\\(?:e" igor-integer-re "\\)?")     ; exponent part
+   "Number syntax in Igor")
 (defconst igor-name-start-re "[a-zA-Z]"
   "Match first character of an identifier name")
 (defconst igor-name-re
