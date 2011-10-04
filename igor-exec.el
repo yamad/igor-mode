@@ -26,6 +26,15 @@
 ;; Interaction with Igor Pro is platform-specfic, so a major goal of
 ;; this extension is to encapsulate platform differences and present a
 ;; single interface that works on all platforms.
+;;
+;; On Mac OS X, this module should work without any extra work since
+;; the interaction depends on Applescript. This code has been tested
+;; to work with OS X 10.6
+;;
+;; On Windows, a python script is used to interact with Igor. There is
+;; no good built-in scripting language that will work easily for this
+;; purpose. Therefore, a native Windows Python distribution and the
+;; win32com module need to be present.
 
 ;;; Code:
 
@@ -50,20 +59,46 @@ desired file relative to the current file."
     (or load-file-name
         buffer-file-name))))
 
-(defvar igor-exec-mac-scriptname
+(defun igor-exec-execute (&rest cmd-list)
+  "Executes the given Igor commands
+
+One or more commands should be passed as separate string
+arguments. Commands will be escaped, collected into the CMD-LIST,
+and issued to Igor Pro in order.
+
+Delegates to the appropriate script based on platform. Code
+should always favor using this function over the
+platform-specific functions. Currently is a no-op on platforms
+that are not Windows or Mac OS X."
+  (cond ((eq system-type 'windows-nt)
+         (igor-exec-execute-windows cmd-list))
+        ((eq system-type 'darwin)
+         (igor-exec-execute-mac cmd-list))))
+
+(defvar igor-exec-scriptname-mac
   (igor-exec-full-path-from-relative "igor-exec-mac.applescript")
   "Full path to the Mac OS X execution script")
 
 (defun igor-exec-execute-mac (&rest cmd-list)
   "Executes the given Igor commands (Mac OS X)
-
-One or more commands should be passed as separate string
-arguments. Commands will be escaped, collected into the CMD-LIST,
-and issued to Igor Pro in order."
+See the function `igor-exec-execute'"
   (shell-command-to-string
    (format
     "osascript %s %s"
-    igor-exec-mac-scriptname
+    igor-exec-scriptname-mac
+    (igor-exec-compose-cmds cmd-list))))
+
+(defvar igor-exec-scriptname-windows
+  (igor-exec-full-path-from-relative "igor-exec-windows.py")
+  "Full path to the Windows (python) execution script")
+
+(defun igor-exec-execute-windows (&rest cmd-list)
+  "Executes the given Igor commands (Windows)
+See the function `igor-exec-execute'"
+  (shell-command-to-string
+   (format
+    "python.exe %s %s"
+    igor-exec-scriptname-windows
     (igor-exec-compose-cmds cmd-list))))
 
 (defun igor-exec-igor-to-emacs-list (igor-list &optional sep)
