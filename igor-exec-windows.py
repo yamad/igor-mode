@@ -9,6 +9,8 @@ There is no simple scripting language in Windows that will get
 information back from Igor. In VBScript, it is not possible to call
 the Execute2 function from the Igor COM object because Execute2
 returns pointers to type BSTR. VBScript can't handle this.
+
+Requires: pywin32
 """
 
 class WindowsIgorCommunicator(object):
@@ -52,4 +54,4 @@ def main(argv):
 
 if __name__ == '__main__':
     import sys
-    print main(sys.argv[1:])
+    sys.stdout.write(main(sys.argv[1:]))
