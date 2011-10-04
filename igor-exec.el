@@ -38,6 +38,124 @@
 
 ;;; Code:
 
+(defun igor-exec-execute (&rest cmd-list)
+  "Executes the given Igor commands
+
+One or more commands should be passed as separate string
+arguments. Commands will be escaped, collected into the CMD-LIST,
+and issued to Igor Pro in order.
+
+Delegates to the appropriate script based on platform. Code
+should always favor using this function over the
+platform-specific functions. Currently is a no-op on platforms
+that are not Windows or Mac OS X."
+  (cond ((eq system-type 'windows-nt)
+         (apply 'igor-exec-execute-windows cmd-list))
+        ((eq system-type 'darwin)
+         (apply 'igor-exec-execute-mac cmd-list))))
+
+(defun igor-exec-execute-and-return (&rest cmd-list)
+  "Executes the given Igor commands and returns their results"
+  (apply 'igor-exec-execute
+         (mapcar 'igor-exec-format-for-return cmd-list)))
+
+(defun igor-exec-format-for-return (cmd)
+  "Wrap Igor command CMD so that its result is returned to the caller"
+  (format
+   "fprintf 0, \"%%s\", %s" cmd))
+
+(defun igor-exec-format-add-to-op-queue (cmd)
+  "Wrap Igor command CMD for adding to the operation queue"
+  (format
+   "Execute/P/Q \"%s\"" cmd))
+
+(defun igor-exec-cmd-insert-include (include-name)
+  "Return Igor command to include INCLUDE-NAME from the experiment"
+  (igor-exec-format-add-to-op-queue
+   (format
+    "INSERTINCLUDE \\\"%s\\\"" include-name)))
+
+(defun igor-exec-cmd-delete-include (include-name)
+  "Return Igor command to delete INCLUDE-NAME from the experiment"
+  (igor-exec-format-add-to-op-queue
+   (format
+    "DELETEINCLUDE \\\"%s\\\"" include-name)))
+
+(defun igor-exec-cmd-compileprocedures ()
+  "Return Igor command to compile procedures
+
+The space at the end of the string COMPILEPROCEDURES is
+required (go figure)
+"
+  (igor-exec-format-add-to-op-queue "COMPILEPROCEDURES "))
+
+(defun igor-exec-is-procs-compiled ()
+  "Return t if the procedures are compiled, nil if not
+
+A call to FunctionList() when the procedures are not compiled
+returns the value \"Procedures Not Compiled\" as the first member
+in the list. This behavior is undocumented, so it may change."
+  (not (equal
+   "Procedures Not Compiled"
+   (car
+    (igor-exec-igor-to-emacs-list
+     (igor-exec-execute-and-return
+      igor-exec-cmd-compile-status-probe))))))
+(defvar igor-exec-cmd-compile-status-probe
+  "FunctionList(\"xa6dEzCP_funcWontExist\", \";\", \"\")")
+
+(defun igor-exec-clean-not-compiled-flag (func-list)
+  "Return a *cleaned* version of the function list"
+  (remove "Procecures Not Compiled" list))
+
+(defun igor-exec-is-proc-included (include-name)
+  "Return t if the procedure file INCLUDE-NAME is included in the
+  current experiment, nil if not"
+  (if (member include-name (igor-exec-include-list))
+      t nil))
+
+(defun igor-exec-include-list ()
+  "Return list of all included files (*.ipf extensions are
+stripped) in the current experiment"
+  (mapcar
+   'igor-exec-strip-ipf-extension
+   (igor-exec-igor-to-emacs-list
+    (igor-exec-execute-and-return
+     igor-exec-cmd-include-list))))
+(defun igor-exec-strip-ipf-extension (arg)
+  (replace-regexp-in-string "\.ipf" "" arg))
+(defvar igor-exec-cmd-include-list
+  "WinList(\"*\", \";\", \"WIN:128\")")
+
+;; Mac OS X specific functions
+;; ===========================
+(defun igor-exec-execute-mac (&rest cmd-list)
+  "Executes the given Igor commands (Mac OS X)
+See the function `igor-exec-execute'"
+  (shell-command-to-string
+   (format
+    "osascript %s %s"
+    igor-exec-scriptname-mac
+    (igor-exec-compose-cmds cmd-list))))
+
+(defvar igor-exec-scriptname-mac
+  (igor-exec-full-path-from-relative "igor-exec-mac.applescript")
+  "Full path to the Mac OS X execution script")
+
+;; Windows specific functions
+;; ==========================
+(defun igor-exec-execute-windows (&rest cmd-list)
+  "Executes the given Igor commands (Windows)
+See the function `igor-exec-execute'"
+  (shell-command-to-string
+   (format
+    "python.exe %s %s"
+    igor-exec-scriptname-windows
+    (igor-exec-compose-cmds cmd-list))))
+(defvar igor-exec-scriptname-windows
+  (igor-exec-full-path-from-relative "igor-exec-windows.py")
+  "Full path to the Windows (python) execution script")
+
 (defun igor-exec-compose-cmds (cmd-list)
   "Collect Igor commands for execution scripts
 
@@ -54,52 +172,10 @@ script."
 FILE-RELATIVE-PATH must be a string holding the path to the
 desired file relative to the current file."
   (expand-file-name
-   script-relative-path
+   file-relative-path
    (file-name-directory
     (or load-file-name
         buffer-file-name))))
-
-(defun igor-exec-execute (&rest cmd-list)
-  "Executes the given Igor commands
-
-One or more commands should be passed as separate string
-arguments. Commands will be escaped, collected into the CMD-LIST,
-and issued to Igor Pro in order.
-
-Delegates to the appropriate script based on platform. Code
-should always favor using this function over the
-platform-specific functions. Currently is a no-op on platforms
-that are not Windows or Mac OS X."
-  (cond ((eq system-type 'windows-nt)
-         (igor-exec-execute-windows cmd-list))
-        ((eq system-type 'darwin)
-         (igor-exec-execute-mac cmd-list))))
-
-(defvar igor-exec-scriptname-mac
-  (igor-exec-full-path-from-relative "igor-exec-mac.applescript")
-  "Full path to the Mac OS X execution script")
-
-(defun igor-exec-execute-mac (&rest cmd-list)
-  "Executes the given Igor commands (Mac OS X)
-See the function `igor-exec-execute'"
-  (shell-command-to-string
-   (format
-    "osascript %s %s"
-    igor-exec-scriptname-mac
-    (igor-exec-compose-cmds cmd-list))))
-
-(defvar igor-exec-scriptname-windows
-  (igor-exec-full-path-from-relative "igor-exec-windows.py")
-  "Full path to the Windows (python) execution script")
-
-(defun igor-exec-execute-windows (&rest cmd-list)
-  "Executes the given Igor commands (Windows)
-See the function `igor-exec-execute'"
-  (shell-command-to-string
-   (format
-    "python.exe %s %s"
-    igor-exec-scriptname-windows
-    (igor-exec-compose-cmds cmd-list))))
 
 (defun igor-exec-igor-to-emacs-list (igor-list &optional sep)
   "Convert an igor list into a lisp list
