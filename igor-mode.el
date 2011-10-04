@@ -812,19 +812,37 @@
 (defvar igor-mode-windows-procedure-reloader
   "~/.emacs.d/site-lisp/igor-mode/igor_reload.wsf")
 
-(defun igor-mode-reload-unload-igor-procedure ()
-  (if (eq system-type 'windows-nt)
-      (eshell-command (format
-                       "cscript %s \/\/B \/\/Job:unload %s"
-                       igor-mode-windows-procedure-reloader
-                       (igor-mode-current-filename-sans-extension)))))
+;; TODO: check if procedure is loaded and unload it (not just
+;; uninclude it). if the procedures do not successfully compile,
+;; deleting the include to open it for saving does not work.
+(require 'igor-exec)
+(defvar igor-mode-reload-include-list ())
+(defun igor-mode-unload-igor-procedure ()
+  (if (equal "ipf" (file-name-extension buffer-file-name))
+      (let ((curr-include
+            (igor-mode-current-filename-sans-extension)))
+        (if (igor-exec-is-proc-included curr-include)
+            (progn
+              (push curr-include igor-mode-reload-include-list)
+              (igor-exec-execute
+               (igor-exec-cmd-delete-include curr-include)
+               (igor-exec-cmd-compileprocedures)))
+          nil))
+    nil))
 
-(defun igor-mode-reload-load-igor-procedure ()
-  (if (eq system-type 'windows-nt)
-      (eshell-command (format
-                       "cscript %s \/\/B \/\/Job:load %s"
-                       igor-mode-windows-procedure-reloader
-                       (igor-mode-current-filename-sans-extension)))))
+(defun igor-mode-reload-igor-procedure ()
+  (if (equal "ipf" (file-name-extension buffer-file-name))
+      (let ((curr-include
+            (igor-mode-current-filename-sans-extension)))
+        (if (member curr-include
+                    igor-mode-reload-include-list)
+            (progn
+              (delete curr-include igor-mode-reload-include-list)
+              (igor-exec-execute
+               (igor-exec-cmd-insert-include curr-include)
+               (igor-exec-cmd-compileprocedures)))
+          nil))
+    nil))
 
 (defun igor-mode-current-filename-sans-extension ()
   (file-name-nondirectory
@@ -834,11 +852,11 @@
 (add-hook 'igor-mode-hook
           '(lambda ()
              (add-hook 'before-save-hook
-                       'igor-mode-reload-unload-igor-procedure nil t)))
+                       'igor-mode-unload-igor-procedure nil t)))
 (add-hook 'igor-mode-hook
           '(lambda ()
              (add-hook 'after-save-hook
-                       'igor-mode-reload-load-igor-procedure nil t)))
+                       'igor-mode-reload-igor-procedure nil t)))
 
 ;; Clear memory of keyword lists (which are now saved in regexps)
 (setq igor-procdec-keywords nil)
