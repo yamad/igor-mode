@@ -872,7 +872,8 @@
   (set (make-local-variable 'tab-width) igor-tab-width)
   (set (make-local-variable 'comment-start) "// ")
   (set (make-local-variable 'comment-end) "")
-  (setq imenu-generic-expression igor-imenu-generic-expression))
+  (setq imenu-generic-expression igor-imenu-generic-expression)
+  (imenu-add-to-menubar "Igor"))
 
 (provide 'igor-mode)
 ;;; igor-mode.el ends here
