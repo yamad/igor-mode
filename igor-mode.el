@@ -2,67 +2,40 @@
 
 ;; Copyright (C) 2011
 
-;; Author:   Jason Yamada-Hanff <jyamada@fas.harvard.edu>
+;; Author:   Jason Yamada-Hanff <jyamada1@gmail.com>
 ;; Keywords: languages
-;; Created: Jan 13, 2011
 
 ;;; Commentary:
 ;;
-;; Written for Igor Pro 6.12A.
+;; Provides syntax highlighting, indentation, and
+;; autoloading/unloading for Igor Pro procedure files.
+;;
+;; Written for Igor Pro 6.22A.
 ;;
 ;; Code was initially based heavily on Fred White's visual-basic-mode
 ;; <http://www.emacswiki.org/cgi-bin/wiki/visual-basic-mode.el>
 
-;; Install:
+;;; Install:
 ;;
 ;; Add the following lines to your .emacs (or initialization file):
 ;;
 ;; (add-to-list 'load-path "<path/to/igor-mode>")
 ;; (require 'igor-mode)
 
-;; Autoload/unload:
+;;; Autoload/unload:
 ;;
-;; Procedure files are set to read-only while they are loaded in Igor
-;; (at least in Windows). To work around this, this mode integrates
-;; with VBScript scripts that automate the unloading and reloading of
-;; included procedure files and packages before saving. In order for
-;; this functionality to work, follow the following rules:
+;; Procedure files are set to read-only while they are loaded in
+;; Igor. To work around this, when igor-mode saves an *.ipf file, it
+;; unloads the procedure file from Igor, saves the files, and then
+;; reloads the file. It should work on both Windows and Mac OS X
+;; (Igor's supported platforms). On Windows, a Python distribution
+;; with pywin32 is required (see igor-exec.el). I have not tested
+;; these procedures very hard, so if you find a bug, let me know.
 ;;
-;; For stand-alone procedure files, the file must:
-;;
-;;  1) be opened with an `#include` statement (and not opened directly
-;;  by using the "Open File" dialog)
-;;
-;;  2) define a global variable called `<filename>_INCLUDE`
-;;  (i.e. ramp.ipf defines the `ramp_INCLUDE` variable) in the root
-;;  data folder. The easiest way to do this is to use a trick using
-;;  menu macros, by adding the following code to the procedure file
-;;  (make sure to replace <filename> with the name of your file:
-;;
-;; // -- Automatically run an init function when compiled --
-;; Menu "Macros", dynamic
-;;     Init<filename>()
-;; End
-;;
-;; Function/S Init<filename>()
-;;     Variable/G root:<filename>_INCLUDE = 1
-;;     return ""
-;; End
-;; // ------------------------------------------------------
-;;
-;;
-;; For packages, the package must:
-;;
-;;  1) define a function called "Load<packageName>Package" in the
-;;  package loader file
-;;
-;;  2) define a function called "Unload<packageName>Package" in the
-;;  main package file
-;;
-;;  3) these functions should setup and teardown, respectively, a
-;;  package data folder under `root:Packages` named for the package
-;;  (i.e. jSwp package defines the data folder `root:Packages:jSwp`)
-;;
+;; Note: This behavior only works for files that are loaded by
+;; #include, but that is how most procedure files ought to be loaded
+;; anyhow.
+
 
 ;;; Code:
 (defvar igor-tab-width 4)
@@ -808,34 +781,32 @@
   (interactive)
   (igor-indent-to-column (igor-calculate-indent)))
 
-;; Auto loading and unloading of procedure files before saving
-(defvar igor-mode-windows-procedure-reloader
-  "~/.emacs.d/site-lisp/igor-mode/igor_reload.wsf")
-
-;; TODO: check if procedure is loaded and unload it (not just
-;; uninclude it). if the procedures do not successfully compile,
-;; deleting the include to open it for saving does not work.
+;;; Autoload/unload
 (require 'igor-exec)
-(defvar igor-mode-reload-include-list ())
+
+(defvar igor-mode-reload-include-list ()
+  "List to hold names of include files to load after saving")
+
 (defun igor-mode-unload-igor-procedure ()
-  (if (equal "ipf" (file-name-extension buffer-file-name))
+  (if (igor-mode-is-should-autoload)
       (let ((curr-include
-            (igor-mode-current-filename-sans-extension)))
+             (igor-mode-curr-filename-no-ext)))
         (if (igor-exec-is-proc-included curr-include)
             (progn
               (push curr-include igor-mode-reload-include-list)
               (igor-exec-execute
+               (igor-exec-cmd-close-procedure (igor-mode-curr-filename))
                (igor-exec-cmd-delete-include curr-include)
-               (igor-exec-cmd-compileprocedures)))
+               (igor-exec-cmd-compileprocedures))
+              (igor-mode-wait-for-procs-compiled))
           nil))
     nil))
 
 (defun igor-mode-reload-igor-procedure ()
-  (if (equal "ipf" (file-name-extension buffer-file-name))
+  (if (igor-mode-is-should-autoload)
       (let ((curr-include
-            (igor-mode-current-filename-sans-extension)))
-        (if (member curr-include
-                    igor-mode-reload-include-list)
+             (igor-mode-curr-filename-no-ext)))
+        (if (igor-mode-is-proc-need-reload curr-include)
             (progn
               (delete curr-include igor-mode-reload-include-list)
               (igor-exec-execute
@@ -844,10 +815,34 @@
           nil))
     nil))
 
-(defun igor-mode-current-filename-sans-extension ()
+(defun igor-mode-is-should-autoload ()
+  "Returns t if autoloading is appropriate, nil if not"
+  (and
+   (equal "ipf" (file-name-extension buffer-file-name))
+   (igor-exec-is-igor-running)))
+
+(defun igor-mode-is-proc-need-reload (include-name)
+  "Returns t if INCLUDE-NAME needs to be loaded back into Igor, nil if not"
+  (member include-name igor-mode-reload-include-list))
+
+(defun igor-mode-wait-for-procs-compiled ()
+  (let ((wait-time 0))
+    (progn
+      (while (and (< wait-time 10)
+                 (not (equal (igor-exec-is-procs-compiled) t)))
+        (progn
+          (setq wait-time (+ wait-time 0.5))
+          (sleep-for 0.5))))))
+
+(defun igor-mode-curr-filename-no-ext ()
+  "Returns the current buffer's filename without its extension"
   (file-name-nondirectory
    (file-name-sans-extension
     (buffer-file-name))))
+(defun igor-mode-curr-filename ()
+  "Returns the current buffer's filename (by itself)"
+  (file-name-nondirectory
+   (buffer-file-name)))
 
 (add-hook 'igor-mode-hook
           '(lambda ()

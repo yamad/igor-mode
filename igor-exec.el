@@ -54,6 +54,14 @@ that are not Windows or Mac OS X."
         ((eq system-type 'darwin)
          (apply 'igor-exec-execute-mac cmd-list))))
 
+(defun igor-exec-is-igor-running ()
+  "Returns t if Igor Pro is running, nil if not"
+  (cond ((eq system-type 'windows-nt)
+         (igor-exec-is-igor-running-windows))
+        ((eq system-type 'darwin)
+;         (igor-exec-is-igor-running-mac))))
+         nil))) ; until I can verify the run script on Mac, make this no-op
+
 (defun igor-exec-execute-and-return (&rest cmd-list)
   "Executes the given Igor commands and returns their results"
   (apply 'igor-exec-execute
@@ -68,6 +76,12 @@ that are not Windows or Mac OS X."
   "Wrap Igor command CMD for adding to the operation queue"
   (format
    "Execute/P/Q \"%s\"" cmd))
+
+(defun igor-exec-cmd-close-procedure (include-name)
+  "Return Igor command to close INCLUDE-NAME procedure window"
+  (igor-exec-format-add-to-op-queue
+   (format
+    "CloseProc/NAME=\\\"%s\\\"" include-name)))
 
 (defun igor-exec-cmd-insert-include (include-name)
   "Return Igor command to include INCLUDE-NAME from the experiment"
@@ -120,12 +134,46 @@ stripped) in the current experiment"
   (mapcar
    'igor-exec-strip-ipf-extension
    (igor-exec-igor-to-emacs-list
-    (igor-exec-execute-and-return
-     igor-exec-cmd-include-list))))
+    (igor-exec-full-include-list))))
 (defun igor-exec-strip-ipf-extension (arg)
   (replace-regexp-in-string "\.ipf" "" arg))
+
+(defun igor-exec-full-include-list ()
+  "Execute Igor command to get all (including hidden) include
+files
+
+To make hidden include files visible, the IndependentModuleDev
+setting must be on.
+"
+  (igor-exec-trim-whitespace
+   (igor-exec-execute
+    igor-exec-cmd-set-module-dev-on
+    (igor-exec-format-for-return
+     igor-exec-cmd-include-list)
+    igor-exec-cmd-set-module-dev-off)))
+
+(defun igor-exec-cmd-set-module-dev (flag)
+  (format
+   "SetIgorOption IndependentModuleDev=%d" flag))
+(defvar igor-exec-cmd-set-module-dev-on
+  (igor-exec-cmd-set-module-dev 1))
+(defvar igor-exec-cmd-set-module-dev-off
+  (igor-exec-cmd-set-module-dev 0))
 (defvar igor-exec-cmd-include-list
-  "WinList(\"*\", \";\", \"WIN:128\")")
+  "WinList(\"*\", \";\", \"WIN:128,VISIBLE:0\")")
+
+
+(defun igor-exec-full-path-from-relative (file-relative-path)
+  "Returns the full path to a file, given its path relative to
+  this file.
+
+FILE-RELATIVE-PATH must be a string holding the path to the
+desired file relative to the current file."
+  (expand-file-name
+   file-relative-path
+   (file-name-directory
+    (or load-file-name
+        buffer-file-name))))
 
 ;; Mac OS X specific functions
 ;; ===========================
@@ -137,10 +185,24 @@ See the function `igor-exec-execute'"
     "osascript %s %s"
     igor-exec-scriptname-mac
     (igor-exec-compose-cmds cmd-list))))
-
 (defvar igor-exec-scriptname-mac
   (igor-exec-full-path-from-relative "igor-exec-mac.applescript")
   "Full path to the Mac OS X execution script")
+
+(defun igor-exec-is-igor-running-mac ()
+  "Returns t if Igor Pro is running, nil if not (Mac OS X)
+See the function `igor-exec-is-igor-running'"
+  (let ((run-probe
+         (shell-command-to-string
+          (format
+           "osascript %s"
+           igor-exec-scriptname-runcheck-mac))))
+    (if (equal run-probe "True")
+        t nil)))
+(defvar igor-exec-scriptname-runcheck-mac
+  (igor-exec-full-path-from-relative "igor-exec-runcheck-mac.applescript")
+  "Full path to the Windows (python) run test script")
+
 
 ;; Windows specific functions
 ;; ==========================
@@ -156,6 +218,23 @@ See the function `igor-exec-execute'"
   (igor-exec-full-path-from-relative "igor-exec-windows.py")
   "Full path to the Windows (python) execution script")
 
+(defun igor-exec-is-igor-running-windows ()
+  "Returns t if Igor Pro is running, nil if not (Windows)
+See the function `igor-exec-is-igor-running'"
+  (let ((run-probe
+         (shell-command-to-string
+          (format
+           "python.exe %s"
+           igor-exec-scriptname-runcheck-windows))))
+    (if (equal run-probe "True")
+        t nil)))
+(defvar igor-exec-scriptname-runcheck-windows
+  (igor-exec-full-path-from-relative "igor-exec-runcheck-windows.py")
+  "Full path to the Windows (python) run test script")
+
+
+;; Helper functions
+;; ================
 (defun igor-exec-compose-cmds (cmd-list)
   "Collect Igor commands for execution scripts
 
@@ -164,18 +243,6 @@ strings. Each argument is escaped/quoted appropriately. Returns a
 string holding all commands properly prepared for passing to a
 script."
   (combine-and-quote-strings cmd-list))
-
-(defun igor-exec-full-path-from-relative (file-relative-path)
-  "Returns the full path to a file, given its path relative to
-  this file.
-
-FILE-RELATIVE-PATH must be a string holding the path to the
-desired file relative to the current file."
-  (expand-file-name
-   file-relative-path
-   (file-name-directory
-    (or load-file-name
-        buffer-file-name))))
 
 (defun igor-exec-igor-to-emacs-list (igor-list &optional sep)
   "Convert an igor list into a lisp list
@@ -190,6 +257,11 @@ separator defaults to \";\" (a semi-colon)."
   (if (not sep)
       (split-string igor-list ";" t)
     (split-string igor-list sep t)))
+
+(defun igor-exec-trim-whitespace (str)
+  "Remove leading and trailing whitespace from STR"
+  (replace-regexp-in-string
+   "\\(^[[:space:]\n]*\\|[[:space:]\n]*$\\)" "" str))
 
 (provide 'igor-exec)
 ;;; igor-exec.el ends here
