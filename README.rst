@@ -2,7 +2,7 @@
  igor-mode
 ===========
 
-An emacs_ major mode for editing `Igor Pro`_ procedure files (*.ipf)
+An emacs_ major mode for editing `Igor Pro`_ procedure files (\*.ipf)
 
 This mode currently provides syntax highlighting and indentation for
 the Igor programming language syntax.
@@ -22,9 +22,9 @@ your emacs initialization file (e.g. .emacs)::
 Auto-reloading
 ==============
 
-There is also an experimental feature that automatically reloads *.ipf
+There is also an experimental feature that automatically reloads \*.ipf
 files from the running Igor experiment when the file is saved in
-emacs. This is necessary because Igor write-protects any loaded *.ipf
+emacs. This is necessary because Igor write-protects any loaded \*.ipf
 files. The auto-reloading works well as long as the file is not edited
 in emacs and Igor at the same time--that is, you should do all of the
 file editing in emacs.
