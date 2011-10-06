@@ -374,7 +374,7 @@
 ;; Syntax Highlighting
 
 ;; Syntax Table
-(defvar igor-mode-syntax-table
+(defvar igor-syntax-table
   (let ((st (make-syntax-table)))
     ;; Single-line comments "//"
     (modify-syntax-entry ?/  ". 12" st)
@@ -794,49 +794,49 @@
 ;;; Autoload/unload
 (require 'igor-exec)
 
-(defvar igor-mode-reload-include-list ()
+(defvar igor-reload-include-list ()
   "List to hold names of include files to load after saving")
 
-(defun igor-mode-unload-igor-procedure ()
-  (if (igor-mode-is-should-autoload)
+(defun igor-unload-igor-procedure ()
+  (if (igor-is-should-autoload)
       (let ((curr-include
-             (igor-mode-curr-filename-no-ext)))
+             (igor-curr-filename-no-ext)))
         (if (igor-exec-is-proc-included curr-include)
             (progn
-              (push curr-include igor-mode-reload-include-list)
+              (push curr-include igor-reload-include-list)
               (igor-exec-execute
-               (igor-exec-cmd-close-procedure (igor-mode-curr-filename))
+               (igor-exec-cmd-close-procedure (igor-curr-filename))
                (igor-exec-cmd-delete-include curr-include)
                (igor-exec-cmd-compileprocedures))
-              (igor-mode-wait-for-procs-compiled))
+              (igor-wait-for-procs-compiled))
           nil))
     nil))
 
-(defun igor-mode-reload-igor-procedure ()
-  (if (igor-mode-is-should-autoload)
+(defun igor-reload-igor-procedure ()
+  (if (igor-is-should-autoload)
       (let ((curr-include
-             (igor-mode-curr-filename-no-ext)))
-        (if (igor-mode-is-proc-need-reload curr-include)
+             (igor-curr-filename-no-ext)))
+        (if (igor-is-proc-need-reload curr-include)
             (progn
-              (delete curr-include igor-mode-reload-include-list)
+              (delete curr-include igor-reload-include-list)
               (igor-exec-execute
                (igor-exec-cmd-insert-include curr-include)
                (igor-exec-cmd-compileprocedures)))
           nil))
     nil))
 
-(defun igor-mode-is-should-autoload ()
+(defun igor-is-should-autoload ()
   "Returns t if autoloading is appropriate, nil if not"
   (and
    igor-use-autoreload
    (equal "ipf" (file-name-extension buffer-file-name))
    (igor-exec-is-igor-running)))
 
-(defun igor-mode-is-proc-need-reload (include-name)
+(defun igor-is-proc-need-reload (include-name)
   "Returns t if INCLUDE-NAME needs to be loaded back into Igor, nil if not"
-  (member include-name igor-mode-reload-include-list))
+  (member include-name igor-reload-include-list))
 
-(defun igor-mode-wait-for-procs-compiled ()
+(defun igor-wait-for-procs-compiled ()
   (let ((wait-time 0))
     (progn
       (while (and (< wait-time 10)
@@ -845,12 +845,12 @@
           (setq wait-time (+ wait-time 0.5))
           (sleep-for 0.5))))))
 
-(defun igor-mode-curr-filename-no-ext ()
+(defun igor-curr-filename-no-ext ()
   "Returns the current buffer's filename without its extension"
   (file-name-nondirectory
    (file-name-sans-extension
     (buffer-file-name))))
-(defun igor-mode-curr-filename ()
+(defun igor-curr-filename ()
   "Returns the current buffer's filename (by itself)"
   (file-name-nondirectory
    (buffer-file-name)))
@@ -858,11 +858,11 @@
 (add-hook 'igor-mode-hook
           '(lambda ()
              (add-hook 'before-save-hook
-                       'igor-mode-unload-igor-procedure nil t)))
+                       'igor-unload-igor-procedure nil t)))
 (add-hook 'igor-mode-hook
           '(lambda ()
              (add-hook 'after-save-hook
-                       'igor-mode-reload-igor-procedure nil t)))
+                       'igor-reload-igor-procedure nil t)))
 
 ;; Clear memory of keyword lists (which are now saved in regexps)
 (setq igor-procdec-keywords nil)
@@ -878,7 +878,7 @@
 (define-derived-mode igor-mode fundamental-mode "Igor"
   "Major mode for editing IgorPro procedure files."
   (set (make-local-variable 'font-lock-defaults) igor-font-lock-defaults)
-  (set-syntax-table igor-mode-syntax-table)
+  (set-syntax-table igor-syntax-table)
   (set (make-local-variable 'indent-line-function) 'igor-indent-line)
   (set (make-local-variable 'tab-width) igor-tab-width)
   (set (make-local-variable 'comment-start) "// ")
