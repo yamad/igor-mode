@@ -34,6 +34,9 @@ Windows python_ distribution and the pywin32_ package. Both
 ActivePython_ and EPD_ bundle pywin32 in their distribution, so this
 is an easy way to get up and running quickly.
 
+Auto-reload can be turned off by setting the `igor-use-autoreload`
+customization variable to `nil`. It is activated by default.
+
 
 .. _emacs: http://www.gnu.org/s/emacs
 .. _`Igor Pro`: http://www.wavemetrics.com

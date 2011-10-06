@@ -38,7 +38,17 @@
 
 
 ;;; Code:
-(defvar igor-tab-width 4)
+
+;; Custom variables
+(defcustom igor-tab-width 4
+  "Indent width for Igor"
+  :type 'boolean
+  :group 'igor)
+
+(defcustom igor-use-autoreload t
+  "Remove and re-insert files loaded in Igor when saving if non-nil"
+  :type 'boolean
+  :group 'igor)
 
 (defvar igor-mode-hook nil)
 
@@ -818,6 +828,7 @@
 (defun igor-mode-is-should-autoload ()
   "Returns t if autoloading is appropriate, nil if not"
   (and
+   igor-use-autoreload
    (equal "ipf" (file-name-extension buffer-file-name))
    (igor-exec-is-igor-running)))
 
