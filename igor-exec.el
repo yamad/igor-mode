@@ -59,8 +59,7 @@ that are not Windows or Mac OS X."
   (cond ((eq system-type 'windows-nt)
          (igor-exec-is-igor-running-windows))
         ((eq system-type 'darwin)
-;         (igor-exec-is-igor-running-mac))))
-         nil))) ; until I can verify the run script on Mac, make this no-op
+         (igor-exec-is-igor-running-mac))))
 
 (defun igor-exec-execute-and-return (&rest cmd-list)
   "Executes the given Igor commands and returns their results"
@@ -193,10 +192,11 @@ See the function `igor-exec-execute'"
   "Returns t if Igor Pro is running, nil if not (Mac OS X)
 See the function `igor-exec-is-igor-running'"
   (let ((run-probe
-         (shell-command-to-string
-          (format
-           "osascript %s"
-           igor-exec-scriptname-runcheck-mac))))
+         (igor-exec-trim-whitespace
+          (shell-command-to-string
+           (format
+            "osascript %s"
+            igor-exec-scriptname-runcheck-mac)))))
     (if (equal run-probe "True")
         t nil)))
 (defvar igor-exec-scriptname-runcheck-mac

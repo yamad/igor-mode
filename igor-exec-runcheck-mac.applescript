@@ -1,8 +1,8 @@
 -- Return "True" if Igor Pro is running, "False" otherwise
 if isAppRunning("Igor Pro")
-   ECHO("True")
+   do shell script "echo \"True\""
 else
-   EHCO("True")
+   do shell script "echo \"False\""
 end if
 
 on isAppRunning(appName)
@@ -10,7 +10,3 @@ on isAppRunning(appName)
        (name of processes) contains appName
    end tell
 end isAppRunning
-
-on ECHO(str)
-   do shell script "echo \"" & str & "\""
-end ECHO
