@@ -230,10 +230,10 @@ from a shell."
 (defun igor-exec-format-python-execute (path-to-python &rest cmd-list)
 "Format a command to execute the Igor commands CMD-LIST through
 the python interpreter PATH-TO-PYTHON"
-  (igor-exec-format-python-run
+  (apply 'igor-exec-format-python-run
    path-to-python
    igor-exec-scriptname-windows
-   (igor-exec-compose-cmds cmd-list)))
+   cmd-list))
 
 (defun igor-exec-format-python-is-igor-running (path-to-python)
 "Format a command to test whether an Igor instance is running
