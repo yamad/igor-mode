@@ -47,19 +47,23 @@ and issued to Igor Pro in order.
 
 Delegates to the appropriate script based on platform. Code
 should always favor using this function over the
-platform-specific functions. Currently is a no-op on platforms
-that are not Windows or Mac OS X."
+platform-specific functions. Intended to work on Windows, Mac OS
+X, and Linux with WINE installed."
   (cond ((eq system-type 'windows-nt)
          (apply 'igor-exec-execute-windows cmd-list))
         ((eq system-type 'darwin)
-         (apply 'igor-exec-execute-mac cmd-list))))
+         (apply 'igor-exec-execute-mac cmd-list))
+        ((eq system-type 'gnu/linux)
+         (apply 'igor-exec-execute-wine cmd-list))))
 
 (defun igor-exec-is-igor-running ()
   "Returns t if Igor Pro is running, nil if not"
   (cond ((eq system-type 'windows-nt)
          (igor-exec-is-igor-running-windows))
         ((eq system-type 'darwin)
-         (igor-exec-is-igor-running-mac))))
+         (igor-exec-is-igor-running-mac))
+        ((eq system-type 'gnu/linux)
+         (igor-exec-is-igor-running-wine))))
 
 (defun igor-exec-execute-and-return (&rest cmd-list)
   "Executes the given Igor commands and returns their results"
@@ -206,14 +210,44 @@ See the function `igor-exec-is-igor-running'"
 
 ;; Windows specific functions
 ;; ==========================
+(defcustom igor-exec-path-to-python-windows
+  "python.exe"
+  "Command to run Python on Windows OS"
+  :type 'string
+  :group 'igor)
+
+(defun igor-exec-format-python-run (path-to-python script-to-run
+&rest args)
+  "Format a command to run the python script at the path string
+SCRIPT-TO-RUN using the python interpreter at the path string
+PATH-TO-PYTHON. ARGS will be passed to the script as if invoked
+from a shell."
+  (format "%s %s %s"
+          path-to-python
+          script-to-run
+          (igor-exec-compose-cmds args)))
+
+(defun igor-exec-format-python-execute (path-to-python &rest cmd-list)
+"Format a command to execute the Igor commands CMD-LIST through
+the python interpreter PATH-TO-PYTHON"
+  (igor-exec-format-python-run
+   path-to-python
+   igor-exec-scriptname-windows
+   (igor-exec-compose-cmds cmd-list)))
+
+(defun igor-exec-format-python-is-igor-running (path-to-python)
+"Format a command to test whether an Igor instance is running
+using the python interpreter PATH-TO-PYTHON"
+  (igor-exec-format-python-run
+   path-to-python
+   igor-exec-scriptname-runcheck-windows))
+
 (defun igor-exec-execute-windows (&rest cmd-list)
   "Executes the given Igor commands (Windows)
 See the function `igor-exec-execute'"
   (shell-command-to-string
-   (format
-    "python.exe %s %s"
-    igor-exec-scriptname-windows
-    (igor-exec-compose-cmds cmd-list))))
+   (igor-exec-format-python-execute
+    igor-exec-path-to-python-windows cmd-list)))
 (defvar igor-exec-scriptname-windows
   (igor-exec-full-path-from-relative "igor-exec-windows.py")
   "Full path to the Windows (python) execution script")
@@ -223,15 +257,38 @@ See the function `igor-exec-execute'"
 See the function `igor-exec-is-igor-running'"
   (let ((run-probe
          (shell-command-to-string
-          (format
-           "python.exe %s"
-           igor-exec-scriptname-runcheck-windows))))
+          (igor-exec-format-python-is-igor-running
+           igor-exec-path-to-python-windows))))
     (if (equal run-probe "True")
         t nil)))
 (defvar igor-exec-scriptname-runcheck-windows
   (igor-exec-full-path-from-relative "igor-exec-runcheck-windows.py")
   "Full path to the Windows (python) run test script")
 
+;; Linux Wine specific functions
+;; =============================
+(defcustom igor-exec-path-to-python-wine
+  "wine ~/.wine/drive_c/Python27/python.exe"
+  "Command to run Python through the Linux Wine Windows emulator"
+  :type 'string
+  :group 'igor)
+
+(defun igor-exec-execute-wine (&rest cmd-list)
+  "Executes the given Igor commands (Wine)
+See the function `igor-exec-execute'"
+  (shell-command-to-string
+   (apply 'igor-exec-format-python-execute
+    igor-exec-path-to-python-wine cmd-list)))
+
+(defun igor-exec-is-igor-running-wine ()
+  "Returns t if Igor Pro is running, nil if not (Wine)
+See the function `igor-exec-is-igor-running'"
+  (let ((run-probe
+         (shell-command-to-string
+          (igor-exec-format-python-is-igor-running
+           igor-exec-path-to-python-wine))))
+    (if (equal run-probe "True")
+        t nil)))
 
 ;; Helper functions
 ;; ================
