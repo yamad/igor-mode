@@ -29,10 +29,19 @@ files. The auto-reloading works well as long as the file is not edited
 in emacs and Igor at the same time--that is, you should do all of the
 file editing in emacs.
 
-The Windows version of the auto-reload feature requires a native
-Windows python_ distribution and the pywin32_ package. Both
-ActivePython_ and EPD_ bundle pywin32 in their distribution, so this
-is an easy way to get up and running quickly.
+Auto-reload interacts with Igor through the underlying operating
+system. Windows, Mac OS X, and Linux (running Wine_) are supported.
+
+The Windows and Linux/Wine versions of the auto-reload feature require
+a native Windows python_ distribution and the pywin32_ package. Both
+ActivePython_ and EPD_ bundle pywin32 in their distribution.
+
+The official Python_ distribution has been tested to work with
+Linux/Wine. If you are running `Gentoo Linux`_ make sure that Wine
+(app-emulation/wine) is installed with the the *gnutls* and the
+*samba* USE flags on. The command to run Wine python is held in the
+variable `igor-exec-path-to-python-wine`, which will likely need to be
+customized for your particular setup.
 
 Auto-reload can be turned off by setting the `igor-use-autoreload`
 customization variable to `nil`. It is activated by default.
@@ -45,3 +54,5 @@ customization variable to `nil`. It is activated by default.
 .. _pywin32: http://sourceforge.net/projects/pywin32/
 .. _ActivePython: http://www.activestate.com/activepython
 .. _EPD: http://www.enthought.com/products/epd.php
+.. _Wine: http://www.winehq.org
+.. _`Gentoo Linux`: http://www.gentoo.org
