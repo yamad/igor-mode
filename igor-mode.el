@@ -587,6 +587,47 @@
             (push (car pair) (cdr (assoc endkey newlist)))
           (push (list endkey (car pair)) newlist))))))
 
+(defun igor-build-match-list (inlist)
+  "Return an indentation matching list
+
+INLIST must be a list of cons cells which hold a start keyword in
+car and one or more matching end keywords in cdr.
+
+The match list format transforms this list into a mapping with
+end keywords as the keys. The value of each cell is a list of
+cells holding the matching start keyword in car and all valid end
+keywords for that start keyword. This is structure is necessary
+because an ending keyword may have multiple start keywords, and
+each valid start keyword may have a different set of valid end
+keywords."
+  (let (newlist)
+    (dolist (pair inlist newlist)
+      (dolist (endkey (cdr pair))
+        (let ((match-cell (assoc endkey newlist)))
+          (if match-cell
+              (push pair (cadr match-cell))
+            ;; create an empty list and add a cons cell to it should
+            ;; be able to do this in one-line, but elisp doesn't like
+            ;; it
+            (progn
+              (let ((new-cell (cons endkey '())))
+                (push (make-list 1 pair) (cdr new-cell))
+                (push new-cell newlist)))))))))
+
+(igor-build-match-list igor-indent-same-pairs-forward)
+
+(defun igor-append-pairs (curlist inlist)
+  "Adds the pairs in INLIST to the CURLIST, adding the cdr of the
+list to a pre-exisiting pair if it already exists"
+  (let ((newlist (copy-tree curlist t)))
+    (dolist (new-pair inlist newlist)
+      (let ((match-cell
+             (assoc (car new-pair) newlist)))
+        (if match-cell
+            (dolist (new-elt (cdr new-pair))
+              (if (not (rassoc new-elt match-cell))
+                  (push new-elt (cdr match-cell))))
+          (push new-pair newlist))))))
 
 ;;; Indentation pairs
 ;; When a keyword is encountered that defines a block, it may
@@ -644,9 +685,15 @@
   "List of cons cells of start and multi-use mid-level keywords
   for increased-level indentation.")
 
+(defconst igor-indent-same-pairs-forward
+  (igor-append-pairs
+   igor-start-end-pairs igor-start-middle-pairs)
+  "List of cons cells of signle-use same-level start and end
+  keywords")
+
 (defconst igor-indent-same-pairs
   (igor-flip-pairs
-   (append igor-start-end-pairs igor-start-middle-pairs))
+   igor-indent-same-pairs-forward)
   "List of cons cells of single-use same-level end and start
   keywords.")
 
@@ -667,6 +714,9 @@
    (append igor-start-middle-many-inc-pairs))
   "List of cons cells of multi-use increased-level end and start
   keywords.")
+
+(defconst igor-indent-same-pairs-forward-re
+  (igor-convert-pairs-str-to-re igor-indent-same-pairs-forward))
 
 (defconst igor-indent-same-pairs-re
   (igor-convert-pairs-str-to-re igor-indent-same-pairs))
@@ -699,8 +749,8 @@
 
 (defun igor-find-indent-match (inlist)
   "Return indent count for the matched regexp pair from
-  inlist. Assumes the open-re is in cdr and close-re is
-  in car (flipped pairs, see `igor-flip-pairs').  Finds the first
+  inlist. Assumes the open-re is in cdr and close-re is in
+  car (flipped pairs, see `igor-flip-pairs').  Finds the first
   unclosed occurence of open-re."
   (let ((elt (car inlist)))
     (if (looking-at (car elt))
@@ -730,6 +780,12 @@
        ;; If first line, no indentation
        ((bobp)
         0)
+
+       ((looking-at "^[ \t]*\\<\\(else\\)\\>")
+        (progn
+          (igor-find-matching-stmt "^[ \t]*\\<\\(if\\)\\>"
+                                   "^[ \t]*\\<\\(else\\|elseif\\|endif\\)\\>")
+          (current-indentation)))
 
        ;; Statements that match start keyword indent
        ((looking-at igor-indent-same-keys-re) ; single-use words
