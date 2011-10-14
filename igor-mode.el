@@ -634,9 +634,12 @@ indentation matching"
   (igor-wrap-re-startline
    (regexp-opt wordlist 'words)))
 
-(defun igor-append-pairs (curlist inlist)
+(defun igor-append-pairs (curlist inlist &optional exists-only)
   "Adds the pairs in INLIST to the CURLIST, adding the cdr of the
-list to a pre-exisiting pair if it already exists"
+list to a pre-exisiting pair if it already exists.
+
+If EXISTS-ONLY is non-nil, only pre-existing keys are appended to
+"
   (let ((newlist (copy-tree curlist t)))
     (dolist (new-pair inlist newlist)
       (let ((match-cell
@@ -645,7 +648,8 @@ list to a pre-exisiting pair if it already exists"
             (dolist (new-elt (cdr new-pair))
               (if (not (rassoc new-elt match-cell))
                   (push new-elt (cdr match-cell))))
-          (push new-pair newlist))))))
+          (if (not exists-only)
+              (push new-pair newlist)))))))
 
 ;;; Indentation pairs
 ;; When a keyword is encountered that defines a block, it may
@@ -685,6 +689,38 @@ list to a pre-exisiting pair if it already exists"
   "List of cons cells of start and single-use mid-level keywords
   for same-level indentation.")
 
+(defconst igor-indent-middle-start-match-list
+  (let ((newlist
+         (igor-build-match-list igor-start-middle-pairs)))
+    (dolist (match-cell newlist newlist)
+      (setcdr match-cell
+              (setcdr (cdr match-cell)
+                      (igor-append-pairs
+                       (cdr match-cell)
+                       igor-start-end-pairs t))))))
+
+(defun igor-append-match-lists (match-list append-list)
+  "Return a MATCH-LIST with
+
+(defun igor-join-alists (alist append-list)
+  "Return a list that has added association values from
+APPEND-LIST to ALIST if the same keys exist in both alists"
+  (let (newlist)
+    (dolist (acell alist newlist)
+      (push (igor-append-to-alist acell append-list)
+            newlist))))
+
+(defun igor-append-to-alist (acell append-alist)
+  "Adds the value of associations found in APPEND-ALIST that have
+  the same key as the association cell ACELL to ACELL."
+  (let ((matched-assoc
+         (assoc (car acell) append-alist)))
+        (if matched-assoc
+            (cons
+             (car acell)
+             (cons (cdr acell)
+                   (cdr matched-assoc))))))
+
 (defconst igor-start-middle-many-pairs
   '(("if" "elseif")
     ("#if" "#elif"))
@@ -715,6 +751,13 @@ list to a pre-exisiting pair if it already exists"
 (defconst igor-indent-same-match-list-re
   (igor-match-list-to-re
    igor-indent-same-match-list))
+
+(defconst igor-indent-end-start-pairs
+  (igor-flip-pairs
+   igor-start-end-pairs))
+(defconst igor-indent-end-start-pairs-re
+  (igor-convert-pairs-str-to-re
+   igor-indent-end-start-pairs))
 
 (defconst igor-indent-same-pairs
   (igor-flip-pairs
@@ -754,6 +797,14 @@ list to a pre-exisiting pair if it already exists"
 
 (defconst igor-indent-increase-many-pairs-re
   (igor-convert-pairs-str-to-re igor-indent-increase-many-pairs))
+
+(defconst igor-indent-end-keys-re
+  (igor-wrap-re-startline
+   (regexp-opt
+    (sort
+     (mapcar 'car igor-indent-end-start-pairs)
+     'string<)
+    'words)))
 
 (defconst igor-indent-same-keys-re
   (igor-wrap-re-startline
@@ -818,17 +869,10 @@ list to a pre-exisiting pair if it already exists"
        ((bobp)
         0)
 
-       ((looking-at "^[ \t]*\\<\\(else\\)\\>")
-        (progn
-          (igor-find-matching-stmt "^[ \t]*\\<\\(if\\)\\>"
-                                   "^[ \t]*\\<\\(else\\|elseif\\|endif\\)\\>")
-          (current-indentation)))
-       
-       ((looking-at igor-indent-same-keys-re)
-        (dolist (match-cell igor-indent-same-match-list-re (current-indentation))
-          (if (looking-at (car match-cell))
-              (igor-find-indent-match-matcher
-               (cdr match-cell)))))
+       ;; Block end keywords outdent to matching start
+       ((looking-at igor-indent-end-keys-re)
+        (igor-find-indent-match
+         igor-indent-end-start-pairs-re))
 
        ;; Statements that match start keyword indent
        ((looking-at igor-indent-same-keys-re) ; single-use words
