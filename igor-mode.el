@@ -605,16 +605,34 @@ keywords."
       (dolist (endkey (cdr pair))
         (let ((match-cell (assoc endkey newlist)))
           (if match-cell
-              (push pair (cadr match-cell))
-            ;; create an empty list and add a cons cell to it should
-            ;; be able to do this in one-line, but elisp doesn't like
-            ;; it
-            (progn
-              (let ((new-cell (cons endkey '())))
-                (push (make-list 1 pair) (cdr new-cell))
-                (push new-cell newlist)))))))))
+              (push pair (cdr match-cell))
+            (push (cons endkey (list pair)) newlist)))))))
 
-(igor-build-match-list igor-indent-same-pairs-forward)
+(defun igor-match-list-to-re (matchlist)
+  (let ((relist (copy-tree matchlist t)))
+    (dolist (match-cell relist relist)
+      (progn
+        (setcar match-cell
+                (igor-convert-word-to-indent-re
+                 (car match-cell)))
+        (dolist (start-cell (cdr match-cell))
+          (progn
+            (setcar start-cell
+                    (igor-convert-word-to-indent-re
+                     (car start-cell)))
+            (setcdr start-cell
+                     (igor-convert-list-to-indent-re
+                      (cdr start-cell)))))))))
+
+(defun igor-convert-word-to-indent-re (word)
+  "Convert a string WORD into an optimzed regexp for indentation
+matching"
+  (igor-convert-list-to-indent-re (list word)))
+(defun igor-convert-list-to-indent-re (wordlist)
+  "Convert a list of words WORDLIST into an optimized regexp for
+indentation matching"
+  (igor-wrap-re-startline
+   (regexp-opt wordlist 'words)))
 
 (defun igor-append-pairs (curlist inlist)
   "Adds the pairs in INLIST to the CURLIST, adding the cdr of the
@@ -691,6 +709,13 @@ list to a pre-exisiting pair if it already exists"
   "List of cons cells of signle-use same-level start and end
   keywords")
 
+(defconst igor-indent-same-match-list
+  (igor-build-match-list
+   igor-indent-same-pairs-forward))
+(defconst igor-indent-same-match-list-re
+  (igor-match-list-to-re
+   igor-indent-same-match-list))
+
 (defconst igor-indent-same-pairs
   (igor-flip-pairs
    igor-indent-same-pairs-forward)
@@ -759,6 +784,18 @@ list to a pre-exisiting pair if it already exists"
           (current-indentation))
       (igor-find-indent-match (cdr inlist)))))
 
+(defun igor-find-indent-match-matcher (match-pairs)
+  (if match-pairs
+      (let ((match-pair (car match-pairs)))
+        (if (looking-at (cdr match-pair))
+            (progn
+              (igor-find-matching-stmt (car match-pair)
+                                       (cdr match-pair))
+              (if (not (bobp))
+                  (current-indentation)
+                (igor-find-indent-match-matcher (cdr match-pairs))))
+          (igor-find-indent-match-matcher (cdr match-pairs))))))
+
 (defun igor-find-first-indent-match (inlist)
   "Return indent count for the matched regexp pair from
   inlist. Assumes the open-re is in cdr and close-re is
@@ -786,6 +823,12 @@ list to a pre-exisiting pair if it already exists"
           (igor-find-matching-stmt "^[ \t]*\\<\\(if\\)\\>"
                                    "^[ \t]*\\<\\(else\\|elseif\\|endif\\)\\>")
           (current-indentation)))
+       
+       ((looking-at igor-indent-same-keys-re)
+        (dolist (match-cell igor-indent-same-match-list-re (current-indentation))
+          (if (looking-at (car match-cell))
+              (igor-find-indent-match-matcher
+               (cdr match-cell)))))
 
        ;; Statements that match start keyword indent
        ((looking-at igor-indent-same-keys-re) ; single-use words
