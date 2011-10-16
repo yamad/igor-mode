@@ -700,7 +700,8 @@ If EXISTS-ONLY is non-nil, only pre-existing keys are appended to
                        igor-start-end-pairs t))))))
 
 (defun igor-append-match-lists (match-list append-list)
-  "Return a MATCH-LIST with
+  "Return a MATCH-LIST with"
+)
 
 (defun igor-join-alists (alist append-list)
   "Return a list that has added association values from
@@ -711,15 +712,17 @@ APPEND-LIST to ALIST if the same keys exist in both alists"
             newlist))))
 
 (defun igor-append-to-alist (acell append-alist)
-  "Adds the value of associations found in APPEND-ALIST that have
-  the same key as the association cell ACELL to ACELL."
+  "Adds to ACELL the value of associations found in APPEND-ALIST
+  that have the same key as the association cell ACELL."
   (let ((matched-assoc
          (assoc (car acell) append-alist)))
         (if matched-assoc
-            (cons
-             (car acell)
-             (cons (cdr acell)
-                   (cdr matched-assoc))))))
+            (let ((addon (cdr matched-assoc)))
+              (if (not (consp addon))
+                   (setq addon (cons addon '())))
+              (cons (car acell)
+                    (cons (cdr acell)
+                          addon))))))
 
 (defconst igor-start-middle-many-pairs
   '(("if" "elseif")
@@ -1030,4 +1033,27 @@ APPEND-LIST to ALIST if the same keys exist in both alists"
   (imenu-add-to-menubar "Igor"))
 
 (provide 'igor-mode)
+
+;; Tests
+(ert-deftest append-to-alist-test ()
+  (should
+   (equal
+    (igor-append-to-alist
+     (cons 1 2)
+     (list (cons 1 3) (cons 4 5)))
+    '(1 2 3)))
+  (should
+   (equal
+    (igor-append-to-alist
+     (cons "if" "elseif")
+     (list (list "if" "endif" "else")
+           (cons "try" "catch")))
+    '("if" "elseif" "endif" "else"))))
+
+(ert-deftest test-cons-list ()
+  (should
+   (equal
+    (cons 1 (cons 2 nil))
+    (list 1 2))))
+
 ;;; igor-mode.el ends here
