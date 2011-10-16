@@ -703,26 +703,60 @@ If EXISTS-ONLY is non-nil, only pre-existing keys are appended to
   "Return a MATCH-LIST with"
 )
 
-(defun igor-join-alists (alist append-list)
-  "Return a list that has added association values from
-APPEND-LIST to ALIST if the same keys exist in both alists"
+(defun igor-append-to-alist (alist append-list &optional exists-only)
+  "Return a joined association list of ALIST and APPEND-LIST
+
+If the same key appears in both lists, the values are collected
+and returned as the new value for the key."
   (let (newlist)
-    (dolist (acell alist newlist)
-      (push (igor-append-to-alist acell append-list)
+    (dolist (acell alist (reverse newlist))
+      (push (igor-append-to-pair acell append-list)
             newlist))))
 
-(defun igor-append-to-alist (acell append-alist)
+(defun igor-append-to-pair (acell append-alist)
   "Adds to ACELL the value of associations found in APPEND-ALIST
   that have the same key as the association cell ACELL."
   (let ((matched-assoc
          (assoc (car acell) append-alist)))
-        (if matched-assoc
-            (let ((addon (cdr matched-assoc)))
-              (if (not (consp addon))
-                   (setq addon (cons addon '())))
-              (cons (car acell)
-                    (cons (cdr acell)
-                          addon))))))
+    (if matched-assoc
+        (cons (car acell)
+              (delete-dups
+               (append
+                (igor-convert-to-list (cdr matched-assoc))
+                (igor-convert-to-list (cdr acell)))))
+      acell)))
+
+(defun igor-flatten-alist (alist)
+  "Returns compressed form of the association list ALIST with the
+  values from any repeated keys concatenated under one copy of
+  the key"
+;; TODO!
+  )
+
+(defun igor-alist-all-assoc (key alist)
+  "Returns a list of all associations for KEY in ALIST"
+  (let ((found-assoc
+         (assoc key alist)))
+    (if found-assoc
+        (cons found-assoc
+         (igor-alist-all-assoc key
+                               (delq found-assoc alist)))
+      nil)))
+
+(defun igor-convert-to-list (maybe-list)
+  "Returns a list version of the object MAYBE-LIST
+
+This function can be used to ensure that dot notation pairs or
+strings become lists. This is useful, for instance, when using
+the function `append` to concatenate results.
+"
+  (if (nlistp maybe-list)
+      (cons maybe-list '())
+    (if (null (cdr maybe-list))
+        maybe-list
+      (cons (car maybe-list)
+            (igor-convert-to-list
+             (cdr maybe-list))))))
 
 (defconst igor-start-middle-many-pairs
   '(("if" "elseif")

@@ -1,20 +1,76 @@
 ;; Automatic tests for igor-mode functions (using ert)
+(require 'igor-mode)
 
 ;; Tests
+(ert-deftest append-to-pair-test ()
+  (should
+   (equal
+    (igor-append-to-pair
+     '(1 . 2)
+     '((1 . 3) (4 . 5)))
+    '(1 3 2)))
+  (should
+   (equal
+    (igor-append-to-pair
+     '("if" . "elseif")
+     '(("if" "endif" "else")
+       ("try" "catch")))
+    '("if" "endif" "else" "elseif")))
+  (should
+   (equal
+    (igor-append-to-pair
+     '("if" "elseif")
+     '(("if" . "endif")
+       ("other" . "gone")))
+    '("if" "endif" "elseif")))
+  (should
+   (equal
+    (igor-append-to-pair
+     '("if" "elseif")
+     '(("notif" "dont add")
+       ("alsonotif" "dont add")))
+    '("if" "elseif"))))
+
 (ert-deftest append-to-alist-test ()
   (should
    (equal
     (igor-append-to-alist
-     (cons 1 2)
-     (list (cons 1 3) (cons 4 5)))
+     '(("if" "elseif" "endif")
+      ("try" "catch"))
+     '(("if" "endif")
+       ("other" "gone")))
+    '(("if" "endif" "elseif")
+      ("try" "catch")))))
+
+(ert-deftest convert-to-list-test ()
+  (should
+   (equal
+    (igor-convert-to-list
+     '(1 2 3))
     '(1 2 3)))
   (should
    (equal
-    (igor-append-to-alist
-     (cons "if" "elseif")
-     (list (list "if" "endif" "else")
-           (cons "try" "catch")))
-    '("if" "elseif" "endif" "else"))))
+    (igor-convert-to-list
+     '(1 2 . 3))
+    '(1 2 3)))
+  (should
+   (equal
+    (igor-convert-to-list
+     "NotAList")
+    '("NotAList")))
+  (should
+   (equal
+    (igor-convert-to-list 2)
+    '(2)))
+)
+
+(ert-deftest alist-all-assoc ()
+  (should
+   (equal
+    (igor-alist-all-assoc
+     1
+     '((2 . 2) (1 . 3) (3 . 1) (5 . 1) (1 . 4)))
+    '((1 . 3) (1 . 4)))))
 
 (ert-deftest test-cons-list ()
   "Test to show the difference between a cons cell and a list.
