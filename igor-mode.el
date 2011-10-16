@@ -1033,27 +1033,4 @@ APPEND-LIST to ALIST if the same keys exist in both alists"
   (imenu-add-to-menubar "Igor"))
 
 (provide 'igor-mode)
-
-;; Tests
-(ert-deftest append-to-alist-test ()
-  (should
-   (equal
-    (igor-append-to-alist
-     (cons 1 2)
-     (list (cons 1 3) (cons 4 5)))
-    '(1 2 3)))
-  (should
-   (equal
-    (igor-append-to-alist
-     (cons "if" "elseif")
-     (list (list "if" "endif" "else")
-           (cons "try" "catch")))
-    '("if" "elseif" "endif" "else"))))
-
-(ert-deftest test-cons-list ()
-  (should
-   (equal
-    (cons 1 (cons 2 nil))
-    (list 1 2))))
-
 ;;; igor-mode.el ends here
