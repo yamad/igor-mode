@@ -651,49 +651,6 @@ If EXISTS-ONLY is non-nil, only pre-existing keys are appended to
           (if (not exists-only)
               (push new-pair newlist)))))))
 
-;;; Indentation pairs
-;; When a keyword is encountered that defines a block, it may
-;;  * start a construct (following lines are indented)
-;;  * end a construct (unindent to start level)
-;;  * start a new section of the construct (a mid-level keyword), which may:
-;;     * unindent to start and be used multiple times (e.g., if-elseif)
-;;     * unindent to start and be used only once (e.g., if-else)
-;;     * indent from start and be used multiple times (e.g., switch-case)
-;;     * indent from start and be used only once (e.g., switch-default)
-;;  * no keyword is found (indent as previous line)
-(defconst igor-start-end-pairs
-  '(("Function" "End")
-    ("Static Function" "End")
-    ("Macro" "End" "EndMacro")
-    ("Menu" "End")
-    ("Picture" "End" "EndMacro")
-    ("Static Picture" "End" "EndMacro")
-    ("Proc" "End" "EndMacro")
-    ("Structure" "End" "EndStructure")
-    ("Window" "End" "EndMacro")
-    ("if" "endif")
-    ("for" "endfor")
-    ("do" "while")
-    ("switch" "endswitch")
-    ("strswitch" "endswitch")
-    ("try" "endtry")
-    ("#if" "#endif")
-    ("#ifdef" "#endif")
-    ("#ifndef" "#endif"))
-  "List of cons cells of start and end keywords for indentation
-  blocks. cdr holds all valid end keywords of the car keyword.")
-
-(defconst igor-start-middle-pairs
-  '(("if" "else")
-    ("try" "catch"))
-  "List of cons cells of start and single-use mid-level keywords
-  for same-level indentation.")
-
-(defconst igor-indent-middle-start-match-list
-  (igor-append-to-match-list
-   (igor-build-match-list igor-start-middle-pairs)
-   igor-start-end-pairs))
-
 (defun igor-append-to-match-list (match-list append-list)
   (let (newlist)
     (dolist (match-cell match-list newlist)
@@ -703,11 +660,11 @@ If EXISTS-ONLY is non-nil, only pre-existing keys are appended to
 
 (defun igor-append-to-match-cell (match-cell append-list)
   "Return a copy of MATCH-CELL whose cdr is joined with
-APPEND-LIST using the function `igor-append-to-list'"
+APPEND-LIST using the function `igor-append-to-alist'"
   (cons (car match-cell)
-        (igor-append-to-list
+        (igor-append-to-alist
          (cdr match-cell)
-         append-list)))
+         append-list t)))
 
 (defun igor-append-to-alist (alist append-list &optional exists-only)
   "Return a joined copy of association lists ALIST and APPEND-LIST
@@ -720,7 +677,7 @@ included in the result"
   (let (newlist)
     (setq append-list (igor-compress-alist-keys append-list))
     (setq newlist
-          (dolist (acell alist (reverse newlist))
+          (dolist (acell alist (nreverse newlist))
             (push (igor-append-to-pair acell append-list)
                   newlist)
             (setq append-list (igor-remove-alist-key
@@ -770,7 +727,10 @@ is the cdr. (e.g. '((1 2) (1 3) (5 6)) --> '(1 2 3))"
 
 (defun igor-remove-alist-key (key alist)
   "Return a copy of ALIST with all associations by KEY removed"
-  (assq-delete-all key (copy-tree alist)))
+  (let ((newlist alist)
+        (assocs (igor-alist-all-assoc key alist)))
+    (dolist (cell assocs newlist)
+      (setq newlist (remove cell newlist)))))
 
 (defun igor-alist-all-assoc (key alist)
   "Returns a list of all associations for KEY in ALIST"
@@ -796,6 +756,50 @@ the function `append` to concatenate results.
       (cons (car maybe-list)
             (igor-convert-to-list
              (cdr maybe-list))))))
+
+;;; Indentation pairs
+;; When a keyword is encountered that defines a block, it may
+;;  * start a construct (following lines are indented)
+;;  * end a construct (unindent to start level)
+;;  * start a new section of the construct (a mid-level keyword), which may:
+;;     * unindent to start and be used multiple times (e.g., if-elseif)
+;;     * unindent to start and be used only once (e.g., if-else)
+;;     * indent from start and be used multiple times (e.g., switch-case)
+;;     * indent from start and be used only once (e.g., switch-default)
+;;  * no keyword is found (indent as previous line)
+(defconst igor-start-end-pairs
+  '(("Function" "End")
+    ("Static Function" "End")
+    ("Macro" "End" "EndMacro")
+    ("Menu" "End")
+    ("Picture" "End" "EndMacro")
+    ("Static Picture" "End" "EndMacro")
+    ("Proc" "End" "EndMacro")
+    ("Structure" "End" "EndStructure")
+    ("Window" "End" "EndMacro")
+    ("if" "endif")
+    ("for" "endfor")
+    ("do" "while")
+    ("switch" "endswitch")
+    ("strswitch" "endswitch")
+    ("try" "endtry")
+    ("#if" "#endif")
+    ("#ifdef" "#endif")
+    ("#ifndef" "#endif"))
+  "List of cons cells of start and end keywords for indentation
+  blocks. cdr holds all valid end keywords of the car keyword.")
+
+(defconst igor-start-middle-pairs
+  '(("if" "else")
+    ("try" "catch"))
+  "List of cons cells of start and single-use mid-level keywords
+  for same-level indentation.")
+
+(defconst igor-indent-middle-start-match-list
+  (igor-build-match-list
+   (igor-append-to-alist
+    (igor-compress-alist-keys igor-start-middle-pairs)
+    (igor-compress-alist-keys igor-start-end-pairs))))
 
 (defconst igor-start-middle-many-pairs
   '(("if" "elseif")
