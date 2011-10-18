@@ -498,24 +498,30 @@
 ;; Indentation related commands
 ;; ==================================================
 
-(defun igor-previous-line-of-code()
+(defun igor-previous-line-of-code ()
   "Set point on previous line of code, skipping any blank or comment lines."
   (interactive)
-  (if (not (bobp))
-      (forward-line -1))        ; previous-line depends on goal column
-  (while (and (not (bobp))
-              (or (looking-at igor-blank-re)
-                  (looking-at igor-comment-re)))
-    (forward-line -1)))
+  (igor-navigate-line-of-code -1 (not (bobp))))
 
-(defun igor-next-line-of-code()
+(defun igor-next-line-of-code ()
   "Set point on next line of code, skipping any blank or comment lines."
   (interactive)
-  (if (null (eobp))
-      (forward-line 1))        ; next-line depends on goal column
-  (while (and (null (eobp))
-              (looking-at igor-comment-re))
-    (forward-line 1)))
+  (igor-navigate-line-of-code +1 (not (eobp))))
+
+(defun igor-navigate-line-of-code (increment predicate)
+  "Set point on a new line of code.
+
+INCREMENT is the number of code lines away from the current
+line (e.g. 2 is two lines further, -1 is the previous
+line). PREDICATE is a condition that must be true to navigate to
+the new line. Blank lines and comment lines are skipped."
+  (interactive)
+  (if predicate
+      (forward-line increment))
+  (while (and predicate
+              (or (looking-at igor-comment-re)
+                  (looking-at igor-blank-re)))
+    (forward-line increment)))
 
 (defun igor-find-predicate-matching-stmt (open-p close-p)
   "Find opening statement statisfying OPEN-P predicate for which
