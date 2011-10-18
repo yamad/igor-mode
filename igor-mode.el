@@ -587,7 +587,7 @@
             (push (car pair) (cdr (assoc endkey newlist)))
           (push (list endkey (car pair)) newlist))))))
 
-(defun igor-build-match-list (inlist)
+(defun igor-build-match-list (inlist &optional no-orig-end-values)
   "Return an indentation matching list
 
 INLIST must be a list of cons cells which hold a start keyword in
@@ -599,14 +599,27 @@ cells holding the matching start keyword in car and all valid end
 keywords for that start keyword. This is structure is necessary
 because an ending keyword may have multiple start keywords, and
 each valid start keyword may have a different set of valid end
-keywords."
+keywords.
+"
   (let (newlist)
     (dolist (pair inlist newlist)
       (dolist (endkey (cdr pair))
-        (let ((match-cell (assoc endkey newlist)))
+        (let ((match-cell (assoc endkey newlist))
+              (newpair (if no-orig-end-values
+                           (cons (car pair) '())
+                         pair)))
           (if match-cell
-              (push pair (cdr match-cell))
-            (push (cons endkey (list pair)) newlist)))))))
+              (push newpair (cdr match-cell))
+            (push (cons endkey (list newpair)) newlist)))))))
+
+(defun igor-build-and-append-match-list (alist append-list)
+  "Return a match list with keys based on the cdr values of ALIST
+and values based on both ALIST and APPEND-LIST values for start
+keywords."
+  (igor-append-to-match-list
+   (igor-build-match-list
+    (igor-compress-alist-keys alist))
+   append-list))
 
 (defun igor-match-list-to-re (matchlist)
   (let ((relist (copy-tree matchlist t)))
@@ -795,17 +808,34 @@ the function `append` to concatenate results.
   "List of cons cells of start and single-use mid-level keywords
   for same-level indentation.")
 
-(defconst igor-indent-middle-start-match-list
-  (igor-build-match-list
-   (igor-append-to-alist
-    (igor-compress-alist-keys igor-start-middle-pairs)
-    (igor-compress-alist-keys igor-start-end-pairs))))
-
 (defconst igor-start-middle-many-pairs
   '(("if" "elseif")
     ("#if" "#elif"))
   "List of cons cells of start and multi-use mid-level keywords
   for same-level indentation.")
+
+(defconst igor-outdent-single-match-list
+  (igor-build-and-append-match-list
+   igor-start-middle-pairs
+   igor-start-end-pairs)
+  "Match list for single use keywords that outdent to the same
+level as the start keyword")
+
+(defconst igor-outdent-single-pairs
+  (igor-append-to-alist
+   (igor-compress-alist-keys igor-start-middle-pairs)
+   (igor-compress-alist-keys igor-start-end-pairs))
+  "List of cons cells of start and single-use keywords that close
+a block.")
+
+(defconst igor-outdent-many-match-list
+  (igor-append-to-match-list
+   (igor-build-match-list
+    (igor-compress-alist-keys igor-start-middle-many-pairs) t)
+   igor-outdent-single-pairs)
+  "Match list for multi-use mid-level keywords that outdent to
+  the same level as the start keyword. Multi-use keywords are not
+  included in the close statement keyword list (for obvious reasons).")
 
 (defconst igor-start-middle-inc-pairs
   '(("switch" "default")
@@ -818,6 +848,13 @@ the function `append` to concatenate results.
     ("strswitch" "case"))
   "List of cons cells of start and multi-use mid-level keywords
   for increased-level indentation.")
+
+(defconst igor-indent-single-pairs
+  (igor-append-to-alist
+   (igor-compress-alist-keys igor-start-middle-inc-pairs)
+   (igor-compress-alist-keys igor-outdent-single-pairs))
+  "List of cons cells of start and single-use keywords that
+indent relative to the start keyword")
 
 (defconst igor-indent-same-pairs-forward
   (igor-append-pairs
