@@ -690,28 +690,44 @@ If EXISTS-ONLY is non-nil, only pre-existing keys are appended to
   for same-level indentation.")
 
 (defconst igor-indent-middle-start-match-list
-  (let ((newlist
-         (igor-build-match-list igor-start-middle-pairs)))
-    (dolist (match-cell newlist newlist)
-      (setcdr match-cell
-              (setcdr (cdr match-cell)
-                      (igor-append-pairs
-                       (cdr match-cell)
-                       igor-start-end-pairs t))))))
+  (igor-append-to-match-list
+   (igor-build-match-list igor-start-middle-pairs)
+   igor-start-end-pairs))
 
-(defun igor-append-match-lists (match-list append-list)
-  "Return a MATCH-LIST with"
-)
+(defun igor-append-to-match-list (match-list append-list)
+  (let (newlist)
+    (dolist (match-cell match-list newlist)
+      (push (igor-append-to-match-cell
+             match-cell append-list)
+            newlist))))
+
+(defun igor-append-to-match-cell (match-cell append-list)
+  "Return a copy of MATCH-CELL whose cdr is joined with
+APPEND-LIST using the function `igor-append-to-list'"
+  (cons (car match-cell)
+        (igor-append-to-list
+         (cdr match-cell)
+         append-list)))
 
 (defun igor-append-to-alist (alist append-list &optional exists-only)
-  "Return a joined association list of ALIST and APPEND-LIST
+  "Return a joined copy of association lists ALIST and APPEND-LIST
 
 If the same key appears in both lists, the values are collected
-and returned as the new value for the key."
+and returned as the new value for the key.
+
+If EXISTS-ONLY is non-nil, only pre-existing keys from ALIST are
+included in the result"
   (let (newlist)
-    (dolist (acell alist (reverse newlist))
-      (push (igor-append-to-pair acell append-list)
-            newlist))))
+    (setq append-list (igor-compress-alist-keys append-list))
+    (setq newlist
+          (dolist (acell alist (reverse newlist))
+            (push (igor-append-to-pair acell append-list)
+                  newlist)
+            (setq append-list (igor-remove-alist-key
+                               (car acell) append-list))))
+    (if exists-only
+        newlist
+      (append newlist append-list))))
 
 (defun igor-append-to-pair (acell append-alist)
   "Adds to ACELL the value of associations found in APPEND-ALIST
@@ -725,7 +741,7 @@ and returned as the new value for the key."
                (append
                 (igor-convert-to-list (cdr matched-assoc))
                 (igor-convert-to-list (cdr acell)))))
-      acell)))
+      (igor-convert-to-list acell))))
 
 (defun igor-compress-alist-keys (alist)
   "Returns compressed form of the association list ALIST.
@@ -745,10 +761,12 @@ key holds a list with all values (e.g. '((1 2) (1 3) (5 6)) -->
 ALIST, where KEY is the car and all found values for key in ALIST
 is the cdr. (e.g. '((1 2) (1 3) (5 6)) --> '(1 2 3))"
   (cons key
-        (mapcar 'car
-                (mapcar 'cdr
-                        (igor-alist-all-assoc
-                         key alist)))))
+        (apply 'append
+        (mapcar
+         'igor-convert-to-list
+         (mapcar 'cdr
+                 (igor-alist-all-assoc
+                  key alist))))))
 
 (defun igor-remove-alist-key (key alist)
   "Return a copy of ALIST with all associations by KEY removed"

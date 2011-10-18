@@ -35,12 +35,41 @@
   (should
    (equal
     (igor-append-to-alist
-     '(("if" "elseif" "endif")
+     '(("if" "elseif")
       ("try" "catch"))
      '(("if" "endif")
-       ("other" "gone")))
+       ("other" "gone")) t)
     '(("if" "endif" "elseif")
-      ("try" "catch")))))
+      ("try" "catch"))))
+  (should
+   (equal
+    (igor-append-to-alist
+     '((1 . 2) (2 . 2))
+     '((1 . 3) (1 . 4) (2 . 4) (3 . 5) (3 . 6)))
+    '((1 3 4 2) (2 4 2) (3 5 6))))
+  (should
+   (equal
+    (igor-append-to-alist
+     '((1 . 2) (2 . 2))
+     '((1 . 3) (1 . 4) (2 . 4) (3 . 5) (3 . 6))
+     t)
+    '((1 3 4 2) (2 4 2))))
+  (should
+   (equal
+    (igor-append-to-alist
+     '((1 . 2) (2 . 2) (4 . 7) (4 . 8))
+     '((1 . 3) (1 . 4) (2 . 4) (3 . 5) (3 . 6))
+     t)
+    '((1 3 4 2) (2 4 2) (4 7) (4 8))))
+  (should
+   (equal
+    (igor-append-to-alist
+     (igor-compress-alist-keys
+      '((1 . 2) (2 . 2) (4 . 7) (4 . 8)))
+     '((1 . 3) (1 . 4) (2 . 4) (3 . 5) (3 . 6))
+     t)
+    '((1 3 4 2) (2 4 2) (4 7 8))))
+)
 
 (ert-deftest convert-to-list-test ()
   (should
@@ -65,7 +94,7 @@
   (should
    (equal
     (igor-convert-to-list '(2))
-    '(2 nil)))
+    '(2 . nil)))
 )
 
 (ert-deftest alist-all-assoc ()
