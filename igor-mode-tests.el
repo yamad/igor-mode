@@ -62,6 +62,10 @@
    (equal
     (igor-convert-to-list 2)
     '(2)))
+  (should
+   (equal
+    (igor-convert-to-list '(2))
+    '(2 nil)))
 )
 
 (ert-deftest alist-all-assoc ()
@@ -71,6 +75,27 @@
      1
      '((2 . 2) (1 . 3) (3 . 1) (5 . 1) (1 . 4)))
     '((1 . 3) (1 . 4)))))
+
+(ert-deftest compress-alist-key ()
+  (should
+   (equal
+    (igor-compress-alist-key
+     1
+     '((1 2) (1 3) (5 6)))
+    '(1 2 3)))
+  (should
+   (equal
+    (igor-compress-alist-key
+     1
+     '((1 . 2) (1 . 3) (5 . 6)))
+    '(1 2 3))))
+
+(ert-deftest compress-alist-keys ()
+  (should
+   (equal
+    (igor-compress-alist-keys
+     '((1 2) (5 6) (1 3) (2 4) (5 7)))
+    '((1 2 3) (5 6 7) (2 4)))))
 
 (ert-deftest test-cons-list ()
   "Test to show the difference between a cons cell and a list.

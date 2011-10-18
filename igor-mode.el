@@ -717,7 +717,8 @@ and returned as the new value for the key."
   "Adds to ACELL the value of associations found in APPEND-ALIST
   that have the same key as the association cell ACELL."
   (let ((matched-assoc
-         (assoc (car acell) append-alist)))
+         (assoc (car acell)
+                (igor-compress-alist-keys append-alist))))
     (if matched-assoc
         (cons (car acell)
               (delete-dups
@@ -726,12 +727,32 @@ and returned as the new value for the key."
                 (igor-convert-to-list (cdr acell)))))
       acell)))
 
-(defun igor-flatten-alist (alist)
-  "Returns compressed form of the association list ALIST with the
-  values from any repeated keys concatenated under one copy of
-  the key"
-;; TODO!
-  )
+(defun igor-compress-alist-keys (alist)
+  "Returns compressed form of the association list ALIST.
+
+Repeated keys in ALIST are pruned so that a single copy of the
+key holds a list with all values (e.g. '((1 2) (1 3) (5 6)) -->
+'((1 2 3) (5 6))"
+  (if (null alist)
+      nil
+    (cons (igor-compress-alist-key
+           (caar alist) alist)
+          (igor-compress-alist-keys
+           (igor-remove-alist-key (caar alist) alist)))))
+
+(defun igor-compress-alist-key (key alist)
+  "Returns compressed form of all associations for KEY in
+ALIST, where KEY is the car and all found values for key in ALIST
+is the cdr. (e.g. '((1 2) (1 3) (5 6)) --> '(1 2 3))"
+  (cons key
+        (mapcar 'car
+                (mapcar 'cdr
+                        (igor-alist-all-assoc
+                         key alist)))))
+
+(defun igor-remove-alist-key (key alist)
+  "Return a copy of ALIST with all associations by KEY removed"
+  (assq-delete-all key (copy-tree alist)))
 
 (defun igor-alist-all-assoc (key alist)
   "Returns a list of all associations for KEY in ALIST"
@@ -739,8 +760,8 @@ and returned as the new value for the key."
          (assoc key alist)))
     (if found-assoc
         (cons found-assoc
-         (igor-alist-all-assoc key
-                               (delq found-assoc alist)))
+         (igor-alist-all-assoc
+          key (remove found-assoc alist)))
       nil)))
 
 (defun igor-convert-to-list (maybe-list)
