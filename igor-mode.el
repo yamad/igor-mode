@@ -820,29 +820,6 @@ the function `append` to concatenate results.
   "List of cons cells of start and multi-use mid-level keywords
   for same-level indentation.")
 
-(defconst igor-outdent-single-match-list
-  (igor-build-and-append-match-list
-   igor-start-middle-pairs
-   igor-start-end-pairs)
-  "Match list for single use keywords that outdent to the same
-level as the start keyword")
-
-(defconst igor-outdent-single-pairs
-  (igor-append-to-alist
-   (igor-compress-alist-keys igor-start-middle-pairs)
-   (igor-compress-alist-keys igor-start-end-pairs))
-  "List of cons cells of start and single-use keywords that close
-a block.")
-
-(defconst igor-outdent-many-match-list
-  (igor-append-to-match-list
-   (igor-build-match-list
-    (igor-compress-alist-keys igor-start-middle-many-pairs) t)
-   igor-outdent-single-pairs)
-  "Match list for multi-use mid-level keywords that outdent to
-  the same level as the start keyword. Multi-use keywords are not
-  included in the close statement keyword list (for obvious reasons).")
-
 (defconst igor-start-middle-inc-pairs
   '(("switch" "default")
     ("strswitch" "default"))
@@ -855,6 +832,13 @@ a block.")
   "List of cons cells of start and multi-use mid-level keywords
   for increased-level indentation.")
 
+(defconst igor-outdent-single-pairs
+  (igor-append-to-alist
+   (igor-compress-alist-keys igor-start-middle-pairs)
+   (igor-compress-alist-keys igor-start-end-pairs))
+  "List of cons cells of start and single-use keywords that close
+a block.")
+
 (defconst igor-indent-single-pairs
   (igor-append-to-alist
    (igor-compress-alist-keys igor-start-middle-inc-pairs)
@@ -862,18 +846,41 @@ a block.")
   "List of cons cells of start and single-use keywords that
 indent relative to the start keyword")
 
-(defconst igor-indent-same-pairs-forward
-  (igor-append-pairs
-   igor-start-end-pairs igor-start-middle-pairs)
-  "List of cons cells of signle-use same-level start and end
-  keywords")
-
-(defconst igor-indent-same-match-list
+(defconst igor-outdent-end-match-list
   (igor-build-match-list
-   igor-indent-same-pairs-forward))
-(defconst igor-indent-same-match-list-re
-  (igor-match-list-to-re
-   igor-indent-same-match-list))
+   igor-start-end-pairs))
+
+(defconst igor-outdent-single-match-list
+  (igor-build-and-append-match-list
+   igor-start-middle-pairs
+   igor-start-end-pairs)
+  "Match list for single use keywords that outdent to the same
+level as the start keyword")
+
+(defconst igor-outdent-many-match-list
+  (igor-append-to-match-list
+   (igor-build-match-list
+    (igor-compress-alist-keys igor-start-middle-many-pairs) t)
+   igor-outdent-single-pairs)
+  "Match list for multi-use mid-level keywords that outdent to
+  the same level as the start keyword. Multi-use keywords are not
+  included in the close statement keyword list.")
+
+(defconst igor-indent-single-match-list
+  (igor-build-and-append-match-list
+   igor-start-middle-inc-pairs
+   igor-outdent-single-pairs)
+  "Match list for single use keywords that indent relative to the
+start keyword")
+
+(defconst igor-indent-many-match-list
+  (igor-append-to-match-list
+   (igor-build-match-list
+    (igor-compress-alist-keys igor-start-middle-many-inc-pairs) t)
+   igor-indent-single-pairs)
+  "Match list for multi use keywords that indent relative to the
+start keyword. Multi-use keywords are not included in the close
+statement keyword list.")
 
 (defconst igor-indent-end-start-pairs
   (igor-flip-pairs
@@ -881,30 +888,6 @@ indent relative to the start keyword")
 (defconst igor-indent-end-start-pairs-re
   (igor-convert-pairs-str-to-re
    igor-indent-end-start-pairs))
-
-(defconst igor-indent-same-pairs
-  (igor-flip-pairs
-   igor-indent-same-pairs-forward)
-  "List of cons cells of single-use same-level end and start
-  keywords.")
-
-(defconst igor-indent-same-many-pairs
-  (igor-flip-pairs
-   (append igor-start-middle-many-pairs))
-  "List of cons cells of multi-use same-level end and start
-  keywords.")
-
-(defconst igor-indent-increase-pairs
-  (igor-flip-pairs
-   (append igor-start-middle-inc-pairs))
-  "List of cons cells of single-use increased-level end and start
-  keywords.")
-
-(defconst igor-indent-increase-many-pairs
-  (igor-flip-pairs
-   (append igor-start-middle-many-inc-pairs))
-  "List of cons cells of multi-use increased-level end and start
-  keywords.")
 
 (defconst igor-indent-same-pairs-forward-re
   (igor-convert-pairs-str-to-re igor-indent-same-pairs-forward))
