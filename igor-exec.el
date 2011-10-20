@@ -246,8 +246,9 @@ using the python interpreter PATH-TO-PYTHON"
   "Executes the given Igor commands (Windows)
 See the function `igor-exec-execute'"
   (shell-command-to-string
-   (igor-exec-format-python-execute
-    igor-exec-path-to-python-windows cmd-list)))
+   (apply 'igor-exec-format-python-execute
+          igor-exec-path-to-python-windows cmd-list)))
+
 (defvar igor-exec-scriptname-windows
   (igor-exec-full-path-from-relative "igor-exec-windows.py")
   "Full path to the Windows (python) execution script")
