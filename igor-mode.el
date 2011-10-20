@@ -275,6 +275,20 @@
     "popup" "printf" "sprintf" "sscanf" "wfprintf")
   "Igor Pro 6 Built-in Operations")
 
+(defvar igor-all-keywords
+  (append igor-procdec-keywords
+          igor-procsub-keywords
+          igor-objrefs-keywords
+          igor-flowcontrol-keywords
+          igor-hash-keywords
+          igor-other-keywords))
+(defvar igor-all-builtin-procedures
+  (append igor-builtin-operations
+          igor-builtin-functions))
+(defvar igor-all-reserved-words
+  (append igor-all-keywords
+          igor-all-builtin-procedures))
+
 ;; Regexp optimized versions of word lists
 (defvar igor-procdec-keywords-re
   (regexp-opt igor-procdec-keywords 'words))
@@ -870,15 +884,39 @@ the new line. Blank lines and comment lines are skipped."
              (add-hook 'after-save-hook
                        'igor-reload-igor-procedure nil t)))
 
-;; Clear memory of keyword lists (which are now saved in regexps)
-(setq igor-procdec-keywords nil)
-(setq igor-procsub-keywords nil)
-(setq igor-objrefs-keywords nil)
-(setq igor-flowcontrol-keywords nil)
-(setq igor-hash-keywords nil)
-(setq igor-other-keywords nil)
-(setq igor-builtin-functions nil)
-(setq igor-builtin-operations nil)
+(defun igor-normalize-case ()
+  "Normalize letter case for Igor keywords in the region
+
+Igor is a case-insensitive language, so this function does not
+change the meaning of code. However, it can be easier to read
+code when a standard case convention is used. The 'correct case'
+of Igor built-ins and keywords is determined by how it is
+documented in the Igor manual."
+  (interactive)
+  (igor-normalize-word-case igor-all-reserved-words))
+
+(defun igor-normalize-word-case (correct-list)
+  "Normalize the case of all words in CORRECT-LIST to case given
+  in CORRECT-LIST
+
+Find all matches for each word in the list CORRECT-LIST and
+replaces the match with the case of the word as it is specified
+in CORRECT-LIST. (e.g. \"vARiaBle\" --> (igor-normalize-word-case
+'(\"Variable\")) --> \"Variable\")"
+  (save-excursion
+    (goto-char (point-min))
+    (let ((regexp (igor-optimize-wordlist-re correct-list)))
+      (while (re-search-forward regexp nil t)
+        (replace-match
+         (igor-get-correct-case (match-string 0) correct-list)
+         t nil)))))
+
+(defun igor-get-correct-case (word correct-list)
+  (car (member-ignore-case word correct-list)))
+
+(defun igor-optimize-wordlist-re (word-list)
+  (regexp-opt
+   (sort word-list 'string<) 'words))
 
 ;; Define this mode
 (define-derived-mode igor-mode fundamental-mode "Igor"
