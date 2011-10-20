@@ -904,12 +904,16 @@ replaces the match with the case of the word as it is specified
 in CORRECT-LIST. (e.g. \"vARiaBle\" --> (igor-normalize-word-case
 '(\"Variable\")) --> \"Variable\")"
   (save-excursion
-    (goto-char (point-min))
-    (let ((regexp (igor-optimize-wordlist-re correct-list)))
-      (while (re-search-forward regexp nil t)
-        (replace-match
-         (igor-get-correct-case (match-string 0) correct-list)
-         t nil)))))
+    (save-restriction
+      (if (use-region-p)
+          (progn
+            (narrow-to-region (region-beginning) (region-end))
+            (goto-char (point-min))))
+      (let ((regexp (igor-optimize-wordlist-re correct-list)))
+        (while (re-search-forward regexp nil t)
+          (replace-match
+           (igor-get-correct-case (match-string 0) correct-list)
+           t nil))))))
 
 (defun igor-get-correct-case (word correct-list)
   (car (member-ignore-case word correct-list)))
