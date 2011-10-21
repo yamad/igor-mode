@@ -524,76 +524,6 @@ the new line. Blank lines and comment lines are skipped."
                   (looking-at igor-blank-re)))
     (forward-line increment)))
 
-(defun igor-find-predicate-matching-stmt (open-p close-p)
-  "Find opening statement statisfying OPEN-P predicate for which
-  matching closing statement statisfies CLOSE-P predicate.
-
-  Point is set on line statifying OPEN-P predicate, with ignoring
-  any line satifying OPEN-P but for which a matching line
-  statifying CLOSE-P was visited before during this search."
-  ;; Searching backwards
-  (let ((level 0))
-    (while (and (>= level 0) (not (bobp)))
-      (igor-previous-line-of-code)
-      (cond ((funcall close-p)
-             (setq level (+ level 1)))
-            ((funcall open-p)
-             (setq level (- level 1)))))))
-
-(defun igor-find-matching-stmt (open-re close-re)
-  "Same as function `igor-find-predicate-matching-stmt' except
-  that regexps OPEN-RE CLOSE-RE are supplied instead of
-  predicate, equivalent predicate being to be looking at those
-  regexps."
-  (igor-find-predicate-matching-stmt
-   (lambda () (looking-at open-re))
-   (lambda () (looking-at close-re))))
-
-(defun igor-find-first-predicate-matching-stmt (open-p sub-p)
-  "Find opening statement statisfying OPEN-P predicate for which
-  a potentially repeating sub-statement satisfying SUB-P
-  predicate.
-
-  Point is set on first previous line satisfying OPEN-P
-  predicate.  It does not account for other instances of SUB-P
-  found before encountering an OPEN-P match, as occurs in
-  `igor-find-predicate-matching-stmt'.  The canonical use case is
-  for multiple `case' statements under a `switch' stmt."
-  ;; Searching backwards
-  (let (found)
-    (while (and (not found) (not (bobp)))
-      (igor-previous-line-of-code)
-      (if (funcall open-p)
-          (setq found t)))))
-
-(defun igor-find-first-matching-stmt (open-re sub-re)
-  "Same as function `igor-find-first-predicate-matching-stmt'
-  except that regexps OPEN-RE and SUB-RE are supplied
-  instead of predicates"
-  (igor-find-first-predicate-matching-stmt
-   (lambda () (looking-at open-re))
-   (lambda () (looking-at sub-re))))
-
-(defun igor-convert-pairs-str-to-re (inlist)
-  "Convert pairs of strings to pairs of optimized regexps"
-  (let (regexp-list)
-    (dolist (curr (reverse inlist) regexp-list)
-      (push (list
-             (igor-wrap-re-startline
-              (regexp-opt (list (car curr)) 'words))
-             (igor-wrap-re-startline
-              (regexp-opt (cdr curr) 'words)))
-            regexp-list))))
-
-(defun igor-flip-pairs (inlist)
-  "Flip direction of start-end pairs"
-  (let (newlist)
-    (dolist (pair (reverse inlist) newlist)
-      (dolist (endkey (cdr pair))
-        (if (assoc endkey newlist)
-            (push (car pair) (cdr (assoc endkey newlist)))
-          (push (list endkey (car pair)) newlist))))))
-
 (defun igor-build-match-list (inlist &optional no-orig-end-values)
   "Return an indentation matching list
 
@@ -1051,7 +981,7 @@ MATCH-LIST-RE that matches the current line; nil if no match"
         (if (not (bobp))                ; if no start keyword was found, do not indent
             (+ igor-tab-width start-indent)
           start-indent))
-
+          
        ;; Cases depending on previous line indent
        (t
         (igor-previous-line-of-code)
