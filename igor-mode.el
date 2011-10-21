@@ -861,8 +861,9 @@ indent relative to the start keyword")
    igor-outdent-end-match-list))
 
 (defconst igor-outdent-single-match-list
-  (igor-build-and-append-match-list
-   igor-start-middle-pairs
+  (igor-append-to-match-list
+   (igor-build-match-list
+    (igor-compress-alist-keys igor-start-middle-pairs) t)
    igor-start-end-pairs)
   "Match list for single use keywords that outdent to the same
 level as the start keyword")
@@ -874,13 +875,24 @@ level as the start keyword")
   (igor-append-to-match-list
    (igor-build-match-list
     (igor-compress-alist-keys igor-start-middle-many-pairs) t)
-   igor-outdent-single-pairs)
+   igor-start-end-pairs)
   "Match list for multi-use mid-level keywords that outdent to
   the same level as the start keyword. Multi-use keywords are not
   included in the close statement keyword list.")
 (defconst igor-outdent-many-match-list-re
   (igor-match-list-to-re
    igor-outdent-many-match-list))
+
+(defconst igor-outdent-match-list
+  (append
+   igor-outdent-end-match-list
+   igor-outdent-single-match-list
+   igor-outdent-many-match-list)
+  "Match list for all keywords that outdent to the start keyword
+indent level")
+(defconst igor-outdent-match-list-re
+  (igor-match-list-to-re
+   igor-outdent-match-list))
 
 (defconst igor-indent-single-match-list
   (igor-build-and-append-match-list
@@ -904,6 +916,16 @@ statement keyword list.")
   (igor-match-list-to-re
    igor-indent-many-match-list))
 
+(defconst igor-indent-match-list
+  (append
+   igor-indent-single-match-list
+   igor-indent-many-match-list)
+  "Match list for all keywords that indent past the start keyword
+indent level")
+(defconst igor-indent-match-list-re
+  (igor-match-list-to-re
+   igor-indent-match-list))
+
 (defun igor-looking-at-re-list (re-list)
   "Return the positions of the regular expression in the list
 RE-LIST that matches the current line. Returns nil if no match"
@@ -925,7 +947,7 @@ how much of the original SEQ has already been processed."
       nil)))
 
 (defun igor-match-list-end-keys (match-list)
-  (mapcar 'igor-match-cell-end-key match-cell))
+  (mapcar 'igor-match-cell-end-key match-list))
 
 (defun igor-match-list-start-keys (match-list)
   (mapcar 'igor-match-cell-start-keys match-list))
@@ -942,65 +964,65 @@ how much of the original SEQ has already been processed."
 (defun igor-match-cell-end-start-keys (match-cell)
   (mapcar 'cdr (cdr match-cell)))
 
-(defun igor-find-indent-match (inlist)
-  "Return indent count for the matched regexp pair from
-  inlist. Assumes the open-re is in cdr and close-re is in
-  car (flipped pairs, see `igor-flip-pairs').  Finds the first
-  unclosed occurence of open-re."
-  (let ((elt (car inlist)))
-    (if (looking-at (car elt))
-        (progn
-          (igor-find-matching-stmt (cadr elt) (car elt))
-          (current-indentation))
-      (igor-find-indent-match (cdr inlist)))))
-
 (defun igor-find-unclosed-start (match-cell)
-  (let ((close-count
+  "Navigate to the first occurrence of an unclosed start keyword
+that matches the MATCH-CELL from a match list"
+  (let ((close-counts
          (make-vector
           (length (cdr match-cell)) 0)))
     (while (and
-            (not (find -1 close-count))
+            (not (find -1 close-counts))
             (not (bobp)))
       (igor-previous-line-of-code)
       (let ((close-match
-             (igor-looking-at-re-list
-              (mapcar 'car
-                      (igor-match-cell-end-start-keys match-cell)))))
+             (igor-close-match-match-cell match-cell)))
         (if close-match
-            (mapcar '+1
-                    (mapcar* 'nth close-match close-count))
+            (igor-update-close-match-count
+             close-counts close-match))
           (let ((open-match
-                 (igor-looking-at-re-list
-                  (igor-match-cell-start-keys match-cell))))
-            (mapcar '-1
-                    (mapcar* 'nth open-match close-count))))))))
+                 (igor-open-match-match-cell match-cell)))
+            (if open-match
+                (igor-update-open-match-count
+                 close-counts open-match)))))))
 
-(defun igor-find-indent-match-match-list (match-list)
-  )
+(defun igor-close-match-match-cell (match-cell)
+  (igor-looking-at-re-list
+   (mapcar 'car
+           (igor-match-cell-end-start-keys match-cell))))
 
-(defun igor-find-indent-match-matcher (match-pairs)
-  (if match-pairs
-      (let ((match-pair (car match-pairs)))
-        (if (looking-at (cdr match-pair))
-            (progn
-              (igor-find-matching-stmt (car match-pair)
-                                       (cdr match-pair))
-              (if (not (bobp))
-                  (current-indentation)
-                (igor-find-indent-match-matcher (cdr match-pairs))))
-          (igor-find-indent-match-matcher (cdr match-pairs))))))
+(defun igor-open-match-match-cell (match-cell)
+  (igor-looking-at-re-list
+   (igor-match-cell-start-keys match-cell)))
 
-(defun igor-find-first-indent-match (inlist)
-  "Return indent count for the matched regexp pair from
-  inlist. Assumes the open-re is in cdr and close-re is
-  in car (flipped pairs, see `igor-flip-pairs').  Finds the first
-  occurence of open-re."
-  (let ((elt (car inlist)))
-    (if (looking-at (car elt))
-        (progn
-          (igor-find-first-matching-stmt (cadr elt) (car elt))
-          (current-indentation))
-      (igor-find-first-indent-match (cdr inlist)))))
+(defun igor-update-close-match-count (counts match-positions)
+  (igor-change-vector-elements counts match-positions '1+))
+
+(defun igor-update-open-match-count (counts match-positions)
+  (igor-change-vector-elements counts match-positions '1-))
+
+(defun igor-change-vector-elements (array idxs func)
+  (mapcar (lambda (idx)
+            (igor-change-vector-element
+             array idx func)) idxs))
+
+(defun igor-change-vector-element (array idx func)
+  (aset array idx
+        (funcall func (elt array idx))))
+
+(defun igor-find-indent-match (match-list-re match-idx)
+  "Returns the indentation of the first occurence of a start
+keyword from the match cell specified by the index MATCH-IDX in
+the match list MATCH-LIST-RE."
+  (let ((matched-cell
+         (elt match-list-re match-idx)))
+    (igor-find-unclosed-start matched-cell)
+    (current-indentation)))
+
+(defun igor-current-line-matches (match-list-re)
+  "Returns the position of the first match-cell in the
+MATCH-LIST-RE that matches the current line; nil if no match"
+  (car (igor-looking-at-re-list
+        (igor-match-list-end-keys match-list-re))))
 
 (defun igor-calculate-indent ()
   "Return indent count for the line of code containing pointer."
@@ -1012,37 +1034,23 @@ how much of the original SEQ has already been processed."
        ((bobp)
         0)
 
-       ;; Block end keywords outdent to matching start
-       ((igor-looking-at-re-list
-         (igor-match-list-end-keys
-          igor-outdent-end-match-list-re))
-        (igor-find-indent-match-match-list
-         igor-outdent-end-match-list-re))
-
-       ((looking-at igor-indent-end-keys-re)
+       ;; Outdent keywords (decrease indentation)
+       ((setq matched-cell
+              (igor-current-line-matches
+               igor-outdent-match-list-re))
         (igor-find-indent-match
-         igor-indent-end-start-pairs-re))
+         igor-outdent-match-list-re matched-cell))
 
-       ;; Statements that match start keyword indent
-       ((looking-at igor-indent-same-keys-re) ; single-use words
-        (igor-find-indent-match
-         igor-indent-same-pairs-re))
-
-       ((looking-at igor-indent-same-many-keys-re) ; multi-use
-        (igor-find-first-indent-match
-         igor-indent-same-many-pairs-re))
-
-
-       ;; Keywords that increase start keyword indent
-       ((looking-at igor-indent-increase-keys-re) ; single-use words
-        (+ (igor-find-indent-match
-            igor-indent-increase-pairs-re)
-           igor-tab-width))
-
-       ((looking-at igor-indent-increase-many-keys-re) ; multi-use
-        (+ (igor-find-first-indent-match
-            igor-indent-increase-many-pairs-re)
-           igor-tab-width))
+       ;; Indent keywords (increase indentation)
+       ((setq matched-cell
+              (igor-current-line-matches
+               igor-indent-match-list-re))
+        (setq start-indent
+              (igor-find-indent-match
+               igor-indent-match-list-re matched-cell))
+        (if (not (bobp))                ; if no start keyword was found, do not indent
+            (+ igor-tab-width start-indent)
+          start-indent))
 
        ;; Cases depending on previous line indent
        (t
