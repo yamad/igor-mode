@@ -21,7 +21,7 @@ class WindowsIgorCommunicator(object):
         self.constants = win32com.client.constants
 
     def execute(self, cmd):
-        flag_nolog = 0
+        flag_nolog = 1
         code_page = 0
 
         err_code = 0
