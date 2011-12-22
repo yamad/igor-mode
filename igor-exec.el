@@ -133,7 +133,7 @@ in the list. This behavior is undocumented, so it may change."
      (igor-exec-execute-and-return
       igor-exec-cmd-compile-status-probe))))))
 (defvar igor-exec-cmd-compile-status-probe
-  "FunctionList(\"\", \";\", \"\")")
+  "FunctionList(\"xa6dEzCP_funcWontExist\", \";\", \"\")")
 
 (defun igor-exec-clean-not-compiled-flag (func-list)
   "Return a *cleaned* version of the function list"
@@ -175,12 +175,15 @@ setting must be on.
 To make hidden include files visible, the IndependentModuleDev
 setting must be on.
 "
-  (igor-exec-trim-whitespace
-   (igor-exec-execute
-    igor-exec-cmd-set-module-dev-on
-    (igor-exec-format-for-return
-     igor-exec-cmd-open-proc-window-list)
-    igor-exec-cmd-set-module-dev-off)))
+  (mapcar
+   'igor-exec-strip-ipf-extension
+   (igor-exec-igor-to-emacs-list
+    (igor-exec-trim-whitespace
+     (igor-exec-execute
+      igor-exec-cmd-set-module-dev-on
+      (igor-exec-format-for-return
+       igor-exec-cmd-open-proc-window-list)
+      igor-exec-cmd-set-module-dev-off)))))
 
 (defun igor-exec-cmd-set-module-dev (flag)
   (format
@@ -197,31 +200,51 @@ setting must be on.
 (defvar igor-exec-cmd-open-proc-window-list
   (igor-exec-cmd-proc-list 1))
 
-(defun igor-exec-includedprocs (window)
-  (progn
-    (apply 'igor-exec-execute (igor-exec-cmd-includedprocs-begin window))
-    (apply 'igor-exec-execute-unquoted igor-exec-cmd-includedprocs-unquote-part)
-    (apply 'igor-exec-execute igor-exec-cmd-includedprocs-before-macro)))
+(defun igor-exec-get-include-name (arg)
+  (replace-regexp-in-string
+   "^#include\\s-+\\\"\\([^\\\"]+\\)\\\"" "\\1" arg))
+(defun igor-exec-local-includes-list (window)
+  (mapcar 'igor-exec-get-include-name
+   (igor-exec-igor-to-emacs-list
+    (igor-exec-trim-whitespace
+     (igor-exec-local-includes window))
+    "\r")))
+
+(defun igor-exec-local-includes (window)
+  (let ((res))
+        (progn
+          (apply 'igor-exec-execute (igor-exec-cmd-includedprocs-begin window))
+          (cond ((eq system-type 'windows-nt)
+                 (apply 'igor-exec-execute-unquoted
+                        igor-exec-cmd-includedprocs-windows-middle))
+                ((eq system-type 'darwin)
+                 (apply 'igor-exec-execute igor-exec-cmd-includedprocs-mac-middle))
+                ((eq system-type 'gnu/linux)
+                 (apply 'igor-exec-execute igor-exec-cmd-includedprocs-mac-middle)))
+          (setq res (igor-exec-execute-and-return igor-exec-cmd-includedprocs-result))
+          (apply 'igor-exec-execute igor-exec-cmd-includedprocs-end))
+        res))
 
 (defun igor-exec-cmd-includedprocs-begin (window)
   (split-string
    (format
-    "NewDataFolder/O/S :procinclude
+    "NewDataFolder/O/S :procinclude_Y9sXbbaM
     String cline, inc_txt
     String proc_txt = ProcedureText(\"\", 0, \"%s\")" window) "\n+" t))
 
-(defvar igor-exec-cmd-includedprocs-unquote-part
+(defvar igor-exec-cmd-includedprocs-windows-middle
   '("\"String r_sep = \"\"\\r\"\"\""
-    "\"String inc_re = \"\"^\\s*#include\\s*\\\\\"\"([^\\\\\"\"]+)\\\\\"\"\"\""))
+    "\"String inc_re = \"\"^\\s*#include\\s*\\\\\"\"([^\\\\\"\"]+)\\\\\"\"\"\"")"On Windows, the carriage-return \r needs special escaping to get passed to Igor")
 
-(defvar igor-exec-cmd-includedprocs-before-macro
-  (split-string
-   (format
-    "String inc_list = \"\"
-  String inc_lines = GrepList(proc_txt, inc_re, 0, r_sep)
-  Variable lno = ItemsInList(inc_lines, r_sep)
-  fprintf 0, \"%%s\", GrepList(proc_txt, inc_re, 0, r_sep)
-  KillDataFolder/Z :") "\n+" t))
+(defvar igor-exec-cmd-includedprocs-mac-middle
+  '("String r_sep = \"\\r\""
+    "String inc_re = \"^\\\s*#include\\\s*\\\"([^\\\"]+)\\\"\""))
+
+(defvar igor-exec-cmd-includedprocs-result
+   "GrepList(proc_txt, inc_re, 0, r_sep)")
+
+(defvar igor-exec-cmd-includedprocs-end
+  (split-string "KillDataFolder/Z :" "\n+" t))
 
 (defun igor-exec-full-path-from-relative (file-relative-path)
   "Returns the full path to a file, given its path relative to
@@ -240,11 +263,15 @@ desired file relative to the current file."
 (defun igor-exec-execute-mac (no-quote &rest cmd-list)
   "Executes the given Igor commands (Mac OS X)
 See the function `igor-exec-execute'"
-  (shell-command-to-string
-   (format
-    "osascript %s %s"
-    igor-exec-scriptname-mac
-    (igor-exec-compose-cmds cmd-list no-quote))))
+  (let (results)
+     (dolist (cmd cmd-list results)
+       (setq results
+             (concat
+              (shell-command-to-string
+               (format
+                "osascript %s %s"
+                igor-exec-scriptname-mac
+                (igor-exec-compose-cmds (cons cmd nil) no-quote))) results)))))
 (defvar igor-exec-scriptname-mac
   (igor-exec-full-path-from-relative "igor-exec-mac.applescript")
   "Full path to the Mac OS X execution script")

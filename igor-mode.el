@@ -1034,36 +1034,39 @@ MATCH-LIST-RE that matches the current line; nil if no match"
       (let ((curr-include
              (igor-curr-filename-no-ext))
             (include-list
-             (igor-exec-include-list))
+             (igor-exec-local-includes-list "Procedure"))
             (open-windows
              (igor-exec-open-proc-window-list)))
-        (if (member curr-include include-list)
+        (if (member curr-include (igor-exec-include-list))
             (progn
-              (append include-list igor-reload-include-list)
-              (append open-windows igor-reopen-window-list)
+              (setq igor-reload-include-list
+                    (append igor-reload-include-list include-list))
+              (setq igor-reopen-window-list
+                    (append igor-reopen-window-list open-windows))
               (dolist (this-window open-windows)
-                 (igor-exec-cmd-close-procedure (igor-curr-filename)))
+                (igor-exec-cmd-close-procedure this-window))
               (dolist (this-include include-list)
                 (igor-exec-execute
-                 (igor-exec-cmd-close-procedure (igor-curr-filename))
-                 (igor-exec-cmd-delete-include curr-include)))
+                 (igor-exec-cmd-delete-include this-include)))
               (igor-exec-execute
                (igor-exec-cmd-compileprocedures))
               (igor-wait-for-procs-compiled))
-          nil))
-    nil))
+          nil)
+    nil)))
 
 (defun igor-reload-igor-procedure ()
   (if (igor-is-should-autoload)
       (let ((curr-include
              (igor-curr-filename-no-ext)))
-        (if (igor-is-proc-need-reload curr-include)
+        (if (> (length igor-reload-include-list) 0)
             (progn
               (dolist (this-include igor-reload-include-list)
-                (delete this-include igor-reload-include-list)
                 (igor-exec-execute
-                 (igor-exec-cmd-insert-include curr-include)))
-                 (igor-exec-cmd-compileprocedures))
+                 (igor-exec-cmd-insert-include this-include))
+                (setq igor-reload-include-list
+                      (delete this-include igor-reload-include-list)))
+              (igor-exec-execute
+               (igor-exec-cmd-compileprocedures)))
           nil))
     nil))
 
