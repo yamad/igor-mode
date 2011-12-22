@@ -799,7 +799,7 @@ indent relative to the start keyword")
 level as the start keyword")
 (defconst igor-outdent-single-match-list-re
   (igor-match-list-to-re
-   igor-outdent-single-match-list))  
+   igor-outdent-single-match-list))
 
 (defconst igor-outdent-many-match-list
   (igor-append-to-match-list
@@ -981,7 +981,7 @@ MATCH-LIST-RE that matches the current line; nil if no match"
         (if (not (bobp))                ; if no start keyword was found, do not indent
             (+ igor-tab-width start-indent)
           start-indent))
-          
+
        ;; Cases depending on previous line indent
        (t
         (igor-previous-line-of-code)
@@ -1026,17 +1026,28 @@ MATCH-LIST-RE that matches the current line; nil if no match"
 
 (defvar igor-reload-include-list ()
   "List to hold names of include files to load after saving")
+(defvar igor-reopen-window-list ()
+  "List to hold names of windows to open after saving")
 
 (defun igor-unload-igor-procedure ()
   (if (igor-is-should-autoload)
       (let ((curr-include
-             (igor-curr-filename-no-ext)))
-        (if (igor-exec-is-proc-included curr-include)
+             (igor-curr-filename-no-ext))
+            (include-list
+             (igor-exec-include-list))
+            (open-windows
+             (igor-exec-open-proc-window-list)))
+        (if (member curr-include include-list)
             (progn
-              (push curr-include igor-reload-include-list)
+              (append include-list igor-reload-include-list)
+              (append open-windows igor-reopen-window-list)
+              (dolist (this-window open-windows)
+                 (igor-exec-cmd-close-procedure (igor-curr-filename)))
+              (dolist (this-include include-list)
+                (igor-exec-execute
+                 (igor-exec-cmd-close-procedure (igor-curr-filename))
+                 (igor-exec-cmd-delete-include curr-include)))
               (igor-exec-execute
-               (igor-exec-cmd-close-procedure (igor-curr-filename))
-               (igor-exec-cmd-delete-include curr-include)
                (igor-exec-cmd-compileprocedures))
               (igor-wait-for-procs-compiled))
           nil))
@@ -1048,10 +1059,11 @@ MATCH-LIST-RE that matches the current line; nil if no match"
              (igor-curr-filename-no-ext)))
         (if (igor-is-proc-need-reload curr-include)
             (progn
-              (delete curr-include igor-reload-include-list)
-              (igor-exec-execute
-               (igor-exec-cmd-insert-include curr-include)
-               (igor-exec-cmd-compileprocedures)))
+              (dolist (this-include igor-reload-include-list)
+                (delete this-include igor-reload-include-list)
+                (igor-exec-execute
+                 (igor-exec-cmd-insert-include curr-include)))
+                 (igor-exec-cmd-compileprocedures))
           nil))
     nil))
 

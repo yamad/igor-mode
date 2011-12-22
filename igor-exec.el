@@ -50,11 +50,25 @@ should always favor using this function over the
 platform-specific functions. Intended to work on Windows, Mac OS
 X, and Linux with WINE installed."
   (cond ((eq system-type 'windows-nt)
-         (apply 'igor-exec-execute-windows cmd-list))
+         (apply 'igor-exec-execute-windows nil cmd-list))
         ((eq system-type 'darwin)
-         (apply 'igor-exec-execute-mac cmd-list))
+         (apply 'igor-exec-execute-mac nil cmd-list))
         ((eq system-type 'gnu/linux)
-         (apply 'igor-exec-execute-wine cmd-list))))
+         (apply 'igor-exec-execute-wine nil cmd-list))))
+
+(defun igor-exec-execute-unquoted (&rest cmd-list)
+  "Executes the given Igor commands without filtering through a quoting function
+
+Delegates to the appropriate script based on platform. Code
+should always favor using this function over the
+platform-specific functions. Intended to work on Windows, Mac OS
+X, and Linux with WINE installed."
+  (cond ((eq system-type 'windows-nt)
+         (apply 'igor-exec-execute-windows t cmd-list))
+        ((eq system-type 'darwin)
+         (apply 'igor-exec-execute-mac t cmd-list))
+        ((eq system-type 'gnu/linux)
+         (apply 'igor-exec-execute-wine t cmd-list))))
 
 (defun igor-exec-is-igor-running ()
   "Returns t if Igor Pro is running, nil if not"
@@ -119,7 +133,7 @@ in the list. This behavior is undocumented, so it may change."
      (igor-exec-execute-and-return
       igor-exec-cmd-compile-status-probe))))))
 (defvar igor-exec-cmd-compile-status-probe
-  "FunctionList(\"xa6dEzCP_funcWontExist\", \";\", \"\")")
+  "FunctionList(\"\", \";\", \"\")")
 
 (defun igor-exec-clean-not-compiled-flag (func-list)
   "Return a *cleaned* version of the function list"
@@ -155,6 +169,19 @@ setting must be on.
      igor-exec-cmd-include-list)
     igor-exec-cmd-set-module-dev-off)))
 
+(defun igor-exec-open-proc-window-list ()
+  "Execute Igor command to get all open procedure windows
+
+To make hidden include files visible, the IndependentModuleDev
+setting must be on.
+"
+  (igor-exec-trim-whitespace
+   (igor-exec-execute
+    igor-exec-cmd-set-module-dev-on
+    (igor-exec-format-for-return
+     igor-exec-cmd-open-proc-window-list)
+    igor-exec-cmd-set-module-dev-off)))
+
 (defun igor-exec-cmd-set-module-dev (flag)
   (format
    "SetIgorOption IndependentModuleDev=%d" flag))
@@ -162,9 +189,39 @@ setting must be on.
   (igor-exec-cmd-set-module-dev 1))
 (defvar igor-exec-cmd-set-module-dev-off
   (igor-exec-cmd-set-module-dev 0))
+(defun igor-exec-cmd-proc-list (visible)
+  (format
+  "WinList(\"*\", \";\", \"WIN:128,VISIBLE:%d\")" visible))
 (defvar igor-exec-cmd-include-list
-  "WinList(\"*\", \";\", \"WIN:128,VISIBLE:0\")")
+  (igor-exec-cmd-proc-list 0))
+(defvar igor-exec-cmd-open-proc-window-list
+  (igor-exec-cmd-proc-list 1))
 
+(defun igor-exec-includedprocs (window)
+  (progn
+    (apply 'igor-exec-execute (igor-exec-cmd-includedprocs-begin window))
+    (apply 'igor-exec-execute-unquoted igor-exec-cmd-includedprocs-unquote-part)
+    (apply 'igor-exec-execute igor-exec-cmd-includedprocs-before-macro)))
+
+(defun igor-exec-cmd-includedprocs-begin (window)
+  (split-string
+   (format
+    "NewDataFolder/O/S :procinclude
+    String cline, inc_txt
+    String proc_txt = ProcedureText(\"\", 0, \"%s\")" window) "\n+" t))
+
+(defvar igor-exec-cmd-includedprocs-unquote-part
+  '("\"String r_sep = \"\"\\r\"\"\""
+    "\"String inc_re = \"\"^\\s*#include\\s*\\\\\"\"([^\\\\\"\"]+)\\\\\"\"\"\""))
+
+(defvar igor-exec-cmd-includedprocs-before-macro
+  (split-string
+   (format
+    "String inc_list = \"\"
+  String inc_lines = GrepList(proc_txt, inc_re, 0, r_sep)
+  Variable lno = ItemsInList(inc_lines, r_sep)
+  fprintf 0, \"%%s\", GrepList(proc_txt, inc_re, 0, r_sep)
+  KillDataFolder/Z :") "\n+" t))
 
 (defun igor-exec-full-path-from-relative (file-relative-path)
   "Returns the full path to a file, given its path relative to
@@ -180,14 +237,14 @@ desired file relative to the current file."
 
 ;; Mac OS X specific functions
 ;; ===========================
-(defun igor-exec-execute-mac (&rest cmd-list)
+(defun igor-exec-execute-mac (no-quote &rest cmd-list)
   "Executes the given Igor commands (Mac OS X)
 See the function `igor-exec-execute'"
   (shell-command-to-string
    (format
     "osascript %s %s"
     igor-exec-scriptname-mac
-    (igor-exec-compose-cmds cmd-list))))
+    (igor-exec-compose-cmds cmd-list no-quote))))
 (defvar igor-exec-scriptname-mac
   (igor-exec-full-path-from-relative "igor-exec-mac.applescript")
   "Full path to the Mac OS X execution script")
@@ -216,8 +273,7 @@ See the function `igor-exec-is-igor-running'"
   :type 'string
   :group 'igor)
 
-(defun igor-exec-format-python-run (path-to-python script-to-run
-&rest args)
+(defun igor-exec-format-python-run (path-to-python script-to-run no-quote &rest args)
   "Format a command to run the python script at the path string
 SCRIPT-TO-RUN using the python interpreter at the path string
 PATH-TO-PYTHON. ARGS will be passed to the script as if invoked
@@ -225,14 +281,15 @@ from a shell."
   (format "%s %s %s"
           path-to-python
           script-to-run
-          (igor-exec-compose-cmds args)))
+          (igor-exec-compose-cmds args no-quote)))
 
-(defun igor-exec-format-python-execute (path-to-python &rest cmd-list)
+(defun igor-exec-format-python-execute (path-to-python no-quote &rest cmd-list)
 "Format a command to execute the Igor commands CMD-LIST through
 the python interpreter PATH-TO-PYTHON"
   (apply 'igor-exec-format-python-run
    path-to-python
    igor-exec-scriptname-windows
+   no-quote
    cmd-list))
 
 (defun igor-exec-format-python-is-igor-running (path-to-python)
@@ -240,14 +297,14 @@ the python interpreter PATH-TO-PYTHON"
 using the python interpreter PATH-TO-PYTHON"
   (igor-exec-format-python-run
    path-to-python
-   igor-exec-scriptname-runcheck-windows))
+   igor-exec-scriptname-runcheck-windows nil))
 
-(defun igor-exec-execute-windows (&rest cmd-list)
+(defun igor-exec-execute-windows (no-quote &rest cmd-list)
   "Executes the given Igor commands (Windows)
 See the function `igor-exec-execute'"
   (shell-command-to-string
    (apply 'igor-exec-format-python-execute
-          igor-exec-path-to-python-windows cmd-list)))
+          igor-exec-path-to-python-windows no-quote cmd-list)))
 
 (defvar igor-exec-scriptname-windows
   (igor-exec-full-path-from-relative "igor-exec-windows.py")
@@ -274,12 +331,12 @@ See the function `igor-exec-is-igor-running'"
   :type 'string
   :group 'igor)
 
-(defun igor-exec-execute-wine (&rest cmd-list)
+(defun igor-exec-execute-wine (no-quote &rest cmd-list)
   "Executes the given Igor commands (Wine)
 See the function `igor-exec-execute'"
   (shell-command-to-string
    (apply 'igor-exec-format-python-execute
-    igor-exec-path-to-python-wine cmd-list)))
+    igor-exec-path-to-python-wine no-quote cmd-list)))
 
 (defun igor-exec-is-igor-running-wine ()
   "Returns t if Igor Pro is running, nil if not (Wine)
@@ -293,14 +350,16 @@ See the function `igor-exec-is-igor-running'"
 
 ;; Helper functions
 ;; ================
-(defun igor-exec-compose-cmds (cmd-list)
+(defun igor-exec-compose-cmds (cmd-list &optional no-quote)
   "Collect Igor commands for execution scripts
 
 CMD-LIST must be a list of one or more commands held in
 strings. Each argument is escaped/quoted appropriately. Returns a
 string holding all commands properly prepared for passing to a
 script."
-  (combine-and-quote-strings cmd-list))
+  (if (not no-quote)
+      (combine-and-quote-strings cmd-list)
+    (mapconcat 'concat cmd-list " ")))
 
 (defun igor-exec-igor-to-emacs-list (igor-list &optional sep)
   "Convert an igor list into a lisp list
