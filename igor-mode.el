@@ -43,7 +43,7 @@
 ;; Custom variables
 (defcustom igor-tab-width 4
   "Indent width for Igor"
-  :type 'boolean
+  :type 'integer
   :group 'igor)
 
 (defcustom igor-use-autoreload t
