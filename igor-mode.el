@@ -312,9 +312,11 @@
   "Integer syntax in Igor")
 (defconst igor-number-re
   (concat
+   "\\_<"
    igor-integer-re
    "\\(?:\\.[0-9]+\\)?"                 ; decimal part
-   "\\(?:e" igor-integer-re "\\)?")     ; exponent part
+   "\\(?:e" igor-integer-re "\\)?"      ; exponent part
+   "\\_>")
    "Number syntax in Igor")
 (defconst igor-name-start-re "[a-zA-Z]"
   "Match first character of an identifier name")
