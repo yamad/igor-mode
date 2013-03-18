@@ -318,6 +318,13 @@
    "\\(?:e" igor-integer-re "\\)?"      ; exponent part
    "\\_>")
    "Number syntax in Igor")
+(defconst igor-hex-num-re
+  (concat
+   "\\_<"
+   "0x"                                 ; hex prefix
+   "\\(?:[0-9A-F]+\\)"
+   "\\_>")
+  "Hex number syntax in Igor")
 (defconst igor-name-start-re "[a-zA-Z]"
   "Match first character of an identifier name")
 (defconst igor-name-re
@@ -431,6 +438,7 @@
      (cons igor-builtin-functions-re 'font-lock-builtin-face)
      (cons igor-builtin-operations-re 'font-lock-builtin-face)
      ;; Numbers
+     (cons igor-hex-num-re 'font-lock-constant-face)
      (cons igor-number-re 'font-lock-constant-face)
      (cons igor-hash-keywords-re 'font-lock-preprocessor-face))))
 
