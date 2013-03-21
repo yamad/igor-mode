@@ -372,7 +372,8 @@ See the function `igor-exec-is-igor-running'"
          (shell-command-to-string
           (igor-exec-format-python-is-igor-running
            igor-exec-path-to-python-wine))))
-    (if (equal run-probe "True")
+    (if (equal (substring run-probe -4 nil)
+               "True")
         t nil)))
 
 ;; Helper functions

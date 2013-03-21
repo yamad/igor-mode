@@ -13,6 +13,19 @@ returns pointers to type BSTR. VBScript can't handle this.
 Requires: pywin32
 """
 
+import contextlib
+import sys
+
+@contextlib.contextmanager
+def nostderr():
+    savestderr = sys.stderr
+    class Devnull(object):
+        def write(self, _): pass
+    sys.stderr = Devnull()
+    yield
+    sys.stderr = savestderr
+
+
 class WindowsIgorCommunicator(object):
     def __init__(self):
         import win32com.client
@@ -53,5 +66,5 @@ def main(argv):
     return '\n'.join(results)
 
 if __name__ == '__main__':
-    import sys
-    sys.stdout.write(main(sys.argv[1:]))
+    with nostderr():
+        sys.stdout.write(main(sys.argv[1:]))
