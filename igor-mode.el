@@ -461,6 +461,7 @@
 
 (defconst igor-defun-start-re
   (concat
+   "^[ \t]*"
    "\\(?:Macro\\|Proc\\|Structure\\|Window" ; non-static start keywords
    "\\|\\(?:" igor-defun-start-function "\\)"
    "\\|\\(?:" igor-defun-start-picture "\\)\\)")
@@ -1237,6 +1238,8 @@ MATCH-LIST-RE that matches the current line; nil if no match"
   (set-syntax-table igor-syntax-table)
   (set (make-local-variable 'indent-line-function) 'igor-indent-line)
   (set (make-local-variable 'tab-width) igor-tab-width)
+  (set (make-local-variable 'beginning-of-defun-function) 'igor-beginning-of-defun)
+  (set (make-local-variable 'end-of-defun-function) 'igor-end-of-defun)
   (set (make-local-variable 'comment-start) "// ")
   (set (make-local-variable 'comment-end) "")
   (setq imenu-generic-expression igor-imenu-generic-expression)
