@@ -414,8 +414,8 @@
 (defconst igor-number-re
   (concat
    "\\_<"
-   igor-integer-re
-   "\\(?:\\.[0-9]+\\)?"                 ; decimal part
+   "\\(?:\\+\\|-\\)?"                   ; sign part
+   "\\(?:[0-9]*\\.\\)?[0-9]+"           ; integer or decimal
    "\\(?:e" igor-integer-re "\\)?"      ; exponent part
    "\\_>")
    "Number syntax in Igor")
