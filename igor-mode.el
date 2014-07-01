@@ -1142,6 +1142,7 @@ MATCH-LIST-RE that matches the current line; nil if no match"
   "List to hold names of windows to open after saving")
 
 (defun igor-unload-igor-procedure ()
+  (message "Unloading Igor Procedure")
   (if (igor-is-should-autoload)
       (let ((curr-include
              (igor-curr-filename-no-ext))
@@ -1149,7 +1150,7 @@ MATCH-LIST-RE that matches the current line; nil if no match"
              (igor-exec-local-includes-list "Procedure"))
             (open-windows
              (igor-exec-open-proc-window-list)))
-        (if (member curr-include (igor-exec-include-list))
+        (if (member curr-include include-list)
             (progn
               (setq igor-reload-include-list
                     (append igor-reload-include-list include-list))
@@ -1167,6 +1168,7 @@ MATCH-LIST-RE that matches the current line; nil if no match"
     nil)))
 
 (defun igor-reload-igor-procedure ()
+  (message "Reloading Igor Procedure")
   (if (igor-is-should-autoload)
       (let ((curr-include
              (igor-curr-filename-no-ext)))
