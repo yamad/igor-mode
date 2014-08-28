@@ -1145,19 +1145,21 @@ MATCH-LIST-RE that matches the current line; nil if no match"
   (if (igor-is-should-autoload)
       (let ((curr-include
              (igor-curr-filename-no-ext))
-            (include-list
+            (local-include-list
              (igor-exec-local-includes-list "Procedure"))
+            (full-include-list
+             (igor-exec-include-list))
             (open-windows
              (igor-exec-open-proc-window-list)))
-        (if (member curr-include (igor-exec-include-list))
+        (if (member curr-include full-include-list)
             (progn
               (setq igor-reload-include-list
-                    (append igor-reload-include-list include-list))
+                    (append igor-reload-include-list local-include-list))
               (setq igor-reopen-window-list
                     (append igor-reopen-window-list open-windows))
               (dolist (this-window open-windows)
                 (igor-exec-cmd-close-procedure this-window))
-              (dolist (this-include include-list)
+              (dolist (this-include local-include-list)
                 (igor-exec-execute
                  (igor-exec-cmd-delete-include this-include)))
               (igor-exec-execute
