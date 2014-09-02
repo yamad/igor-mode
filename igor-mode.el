@@ -614,12 +614,12 @@
 (defun igor-previous-line-of-code ()
   "Set point on previous line of code, skipping any blank or comment lines."
   (interactive)
-  (igor-navigate-line-of-code -1 (not (bobp))))
+  (igor-navigate-line-of-code -1 (lambda () (not (bobp)))))
 
 (defun igor-next-line-of-code ()
   "Set point on next line of code, skipping any blank or comment lines."
   (interactive)
-  (igor-navigate-line-of-code +1 (not (eobp))))
+  (igor-navigate-line-of-code +1  (lambda () (not (eobp)))))
 
 (defun igor-navigate-line-of-code (increment predicate)
   "Set point on a new line of code.
@@ -629,9 +629,9 @@ line (e.g. 2 is two lines further, -1 is the previous
 line). PREDICATE is a condition that must be true to navigate to
 the new line. Blank lines and comment lines are skipped."
   (interactive)
-  (if predicate
+  (if (funcall predicate)
       (forward-line increment))
-  (while (and predicate
+  (while (and (funcall predicate)
               (or (looking-at igor-comment-re)
                   (looking-at igor-blank-re)))
     (forward-line increment)))
