@@ -5,21 +5,8 @@
 ;; Author: Jason Yamada-Hanff <jason@jason.macbook>
 ;; Keywords: processes
 
-;; This program is free software; you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 ;;; Commentary:
-
+;;
 ;; igor-exec (igor execution) provides an emacs interface for sending
 ;; and receiving commands from WaveMetrics' Igor Pro.
 ;;
@@ -35,6 +22,21 @@
 ;; no good built-in scripting language that will work easily for this
 ;; purpose. Therefore, a native Windows Python distribution and the
 ;; win32com module need to be present.
+
+;;; License: GPL-3
+;;
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Code:
 

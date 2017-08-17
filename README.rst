@@ -46,6 +46,10 @@ customized for your particular setup.
 Auto-reload can be turned off by setting the `igor-use-autoreload`
 customization variable to `nil`. It is activated by default.
 
+License
+=======
+
+GPL-3_
 
 .. _emacs: http://www.gnu.org/s/emacs
 .. _`Igor Pro`: http://www.wavemetrics.com
@@ -56,3 +60,4 @@ customization variable to `nil`. It is activated by default.
 .. _EPD: http://www.enthought.com/products/epd.php
 .. _Wine: http://www.winehq.org
 .. _`Gentoo Linux`: http://www.gentoo.org
+.. _GPL-3: https://www.gnu.org/licenses/gpl-3.0.txt
